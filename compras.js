@@ -121,6 +121,13 @@ async function cargarComprasCatalogos(){
  renderCatalogoCompra('lista-formas-pago-compra',comprasCatalogosCache.formas_pago||[],['codigo','nombre','tipo','cuenta_contable_nombre']);
  renderCatalogoCompra('catalogo-tipos-compra',comprasCatalogosCache.tipos_comprobante||[],['codigo','nombre']);
  renderProveedoresCompra(comprasCatalogosCache.proveedores||[]);
+ const ncProv=document.getElementById('nc-proveedor');
+ if(ncProv){
+   ncProv.innerHTML='<option value="">Seleccioná un proveedor</option>';
+   (comprasCatalogosCache.proveedores||[]).forEach(x=>ncProv.innerHTML+='<option value="'+x.id+'">'+escapeHtml(x.razon_social)+'</option>');
+   ncProv.onchange=async()=>{await cargarTimbradosProveedorNC(Number(ncProv.value)||0);await buscarFacturasRelacionablesNC();};
+ }
+ inicializarBuscadorFacturaRelacionadaNC();
  }catch(e){console.error(e);}
 }
 function renderCatalogoCompra(id,rows,cols){
@@ -475,6 +482,9 @@ let facturaCompraItemsCache=[];
 let facturaCompraDepositosCache=[];
 let facturaCompraConceptosCache=[];
 let facturaCompraOrdenesCache=[];
+let notaCreditoCompraItems=[];
+let facturasRelacionablesNC=[];
+let facturaRelacionadaNC=null;
 
 async function cargarDatosRegistrarFactura(){
  try{
@@ -595,6 +605,71 @@ async function cargarOrdenEnFactura(){
  detalleFacturaCompra=det.map(x=>({item_id:x.item_id||'',concepto_id:x.concepto_id||'',descripcion:x.descripcion||x.item_nombre||'',cantidad:Math.max(0,Number(x.cantidad||0)-Number(x.cantidad_recibida||0)),precio_unitario:Number(x.precio_unitario||0),iva_tasa:Number(x.iva_tasa||10),deposito_id:x.deposito_id||'',centro_costo_id:x.centro_costo_id||oc.centro_costo_id||''})).filter(x=>x.cantidad>0);
  renderDetalleFacturaCompra();
 }
+function inicializarBuscadorFacturaRelacionadaNC(){
+ const sel=document.getElementById('nc-factura-anio');if(!sel)return;
+ const actual=new Date().getFullYear();sel.innerHTML='<option value="">Todos los años</option>';
+ for(let y=actual+1;y>=actual-5;y--)sel.innerHTML+='<option value="'+y+'" '+(y===actual?'selected':'')+'>'+y+'</option>';
+ const f=document.getElementById('nc-fecha');if(f&&!f.value)f.value=new Date().toISOString().slice(0,10);
+ const mes=document.getElementById('nc-factura-mes');if(mes)mes.value=String(new Date().getMonth()+1);
+ const tipo=document.getElementById('nc-tipo'),nc=(comprasCatalogosCache.tipos_comprobante||[]).find(x=>String(x.codigo||'').toUpperCase()==='NOTA_CREDITO');
+ if(tipo){tipo.innerHTML='<option value="'+(nc?.id||'')+'">Nota de Crédito</option>';tipo.value=String(nc?.id||'');} llenarSelectCentroCostoNC();
+}
+function llenarSelectCentroCostoNC(){
+ const sel=document.getElementById('nc-centro-costo');if(!sel)return;const actual=sel.value;sel.innerHTML='<option value="">Centro de costo *</option>';
+ (typeof centrosCostosCache!=='undefined'?centrosCostosCache:[]).filter(x=>Number(x.activo)!==0).forEach(x=>{const padre=(typeof centrosCostosCache!=='undefined'&&x.centro_padre_id)?centrosCostosCache.find(p=>Number(p.id)===Number(x.centro_padre_id)):null;const opt=document.createElement('option');opt.value=x.id;opt.textContent=(padre?'↳ ':'')+(x.codigo||'')+' — '+(x.nombre||'');sel.appendChild(opt);});if(actual)sel.value=actual;
+}
+async function cargarTimbradosProveedorNC(proveedorId){
+ const sel=document.getElementById('nc-timbrado');if(!sel)return;sel.innerHTML='<option value="">Timbrado NC *</option>';if(!proveedorId)return;
+ const r=await fetchApi(API+'/api/compras/proveedores/'+proveedorId+'/timbrados');if(!r.ok)return;const rows=await r.json();sel._timbrados=rows;const tipoId=Number(document.getElementById('nc-tipo')?.value||0);
+ rows.filter(x=>Number(x.activo)!==0&&(!tipoId||Number(x.tipo_comprobante_id)===tipoId)).forEach(x=>{const opt=document.createElement('option');opt.value=x.id;opt.textContent=x.numero_timbrado+' · '+(x.modalidad==='ELECTRONICO'?'Electrónico':'Impreso')+' · '+(x.establecimiento||'---')+'-'+(x.punto_expedicion||'---')+' · '+x.numero_desde+'-'+x.numero_hasta;sel.appendChild(opt);});
+}
+async function buscarFacturasRelacionablesNC(){
+ const prov=Number(document.getElementById('nc-proveedor')?.value||0),anio=document.getElementById('nc-factura-anio')?.value||'',mes=document.getElementById('nc-factura-mes')?.value||'',sel=document.getElementById('nc-factura-relacionada');if(!sel)return;
+ facturaRelacionadaNC=null;notaCreditoCompraItems=[];renderDetalleNotaCredito();
+ if(!prov){sel.disabled=true;sel.innerHTML='<option value="">Primero seleccioná un proveedor</option>';document.getElementById('nc-factura-info').innerHTML='';return;}
+ const qs=new URLSearchParams({proveedor_id:String(prov)});if(anio)qs.set('anio',anio);if(mes)qs.set('mes',mes);sel.disabled=true;sel.innerHTML='<option value="">Buscando facturas…</option>';
+ const r=await fetchApi(API+'/api/compras/facturas-relacionables?'+qs.toString()),rows=r.ok?await r.json():[];facturasRelacionablesNC=Array.isArray(rows)?rows.filter(x=>x.puede_recibir_nc):[];
+ sel.innerHTML='<option value="">Seleccioná la factura relacionada *</option>'+facturasRelacionablesNC.map(x=>'<option value="'+x.id+'">'+escapeHtml(x.fecha||'')+' · '+escapeHtml(x.numero||'')+' · G. '+Number(x.total_gs||x.total||0).toLocaleString('es-PY')+' · saldo NC G. '+Number(x.saldo_nc||0).toLocaleString('es-PY')+'</option>').join('');sel.disabled=false;sel.onchange=()=>seleccionarFacturaRelacionadaNC(Number(sel.value)||0);
+ if(!facturasRelacionablesNC.length)document.getElementById('nc-factura-info').innerHTML='<strong>Sin facturas disponibles.</strong> No encontramos una factura con saldo para Nota de Crédito en el período seleccionado.';
+}
+async function seleccionarFacturaRelacionadaNC(id){
+ if(!id){facturaRelacionadaNC=null;return;}const r=await fetchApi(API+'/api/compras/comprobantes/'+id+'/relacion'),d=await r.json().catch(()=>({}));if(!r.ok){alert(d.error||'No se pudo cargar la factura relacionada.');return;}
+ const f=d.factura||{};facturaRelacionadaNC=f;const info=document.getElementById('nc-factura-info');
+ if(info)info.innerHTML='<strong>✓ Factura relacionada cargada</strong><br>Factura: '+escapeHtml(f.numero||'')+' · Fecha: '+escapeHtml(f.fecha||'')+' · Proveedor: '+escapeHtml(f.proveedor||'')+' · RUC: '+escapeHtml(f.ruc||'')+'<br>CDC: '+escapeHtml(f.cdc||'—')+' · Timbrado: '+escapeHtml(f.timbrado_relacionado||'—')+' · Total: G. '+Number(f.total_gs||f.total||0).toLocaleString('es-PY')+' · Ya aplicado por NC: G. '+Number(f.total_nc||0).toLocaleString('es-PY')+' · Saldo disponible: <strong>G. '+Number(f.saldo_nc||0).toLocaleString('es-PY')+'</strong>';
+ const moneda=String(f.moneda_codigo||f.moneda||'PYG').toUpperCase(),ms=document.getElementById('nc-moneda');if(ms){ms.innerHTML='<option value="'+moneda+'">'+moneda+(moneda==='PYG'?' — Guaraní':'')+'</option>';ms.value=moneda;}const cambio=document.getElementById('nc-cambio');if(cambio)cambio.value=Number(f.tipo_cambio||1);
+ await cargarTimbradosProveedorNC(Number(f.proveedor_id)||0);
+ notaCreditoCompraItems=(d.detalle||[]).map(x=>({item_id:x.item_id||'',concepto_id:x.concepto_id||'',descripcion:x.descripcion||x.item_nombre||'',cantidad:Number(x.cantidad||0),precio_unitario:Number(x.precio_unitario||0),iva_tasa:Number(x.iva_tasa||0),deposito_id:x.deposito_id||'',centro_costo_id:x.centro_costo_id||f.centro_costo_id||''}));renderDetalleNotaCredito();
+}
+function agregarLineaNotaCredito(){notaCreditoCompraItems.push({item_id:'',concepto_id:'',descripcion:'',cantidad:1,precio_unitario:0,iva_tasa:0,deposito_id:'',centro_costo_id:''});renderDetalleNotaCredito();}
+function renderDetalleNotaCredito(){
+ const wrap=document.getElementById('nc-detalle-wrap');if(!wrap)return;if(!notaCreditoCompraItems.length){wrap.innerHTML='<div class="sin-datos">Seleccioná una factura relacionada para precargar el detalle.</div>';_recalcularTotalesNotaCredito();return;}
+ let h='<div style="overflow:auto"><table class="tabla"><thead><tr><th>Descripción</th><th>Cantidad</th><th>Precio</th><th>IVA</th><th>Subtotal</th><th></th></tr></thead><tbody>';
+ notaCreditoCompraItems.forEach((x,i)=>{const sub=Number(x.cantidad||0)*Number(x.precio_unitario||0);h+='<tr><td><input value="'+escapeHtml(x.descripcion||'')+'" onchange="actualizarLineaNotaCredito('+i+',\'descripcion\',this.value)" placeholder="Descripción"></td><td><input type="number" step="0.0001" min="0" value="'+Number(x.cantidad||0)+'" onchange="actualizarLineaNotaCredito('+i+',\'cantidad\',this.value)"></td><td><input type="number" step="1" min="0" value="'+Number(x.precio_unitario||0)+'" onchange="actualizarLineaNotaCredito('+i+',\'precio_unitario\',this.value)"></td><td><select onchange="actualizarLineaNotaCredito('+i+',\'iva_tasa\',this.value)"><option value="0" '+(Number(x.iva_tasa)===0?'selected':'')+'>Exento</option><option value="5" '+(Number(x.iva_tasa)===5?'selected':'')+'>5%</option><option value="10" '+(Number(x.iva_tasa)===10?'selected':'')+'>10%</option></select></td><td>'+_numeroLineaFactura(sub)+'</td><td><button type="button" class="btn btn-rojo btn-pequeno" onclick="eliminarLineaNotaCredito('+i+')">✕</button></td></tr>';});wrap.innerHTML=h+'</tbody></table></div>';_recalcularTotalesNotaCredito();
+}
+function actualizarLineaNotaCredito(i,campo,valor){if(!notaCreditoCompraItems[i])return;notaCreditoCompraItems[i][campo]=['cantidad','precio_unitario','iva_tasa'].includes(campo)?Number(valor||0):valor;renderDetalleNotaCredito();}
+function eliminarLineaNotaCredito(i){notaCreditoCompraItems.splice(i,1);renderDetalleNotaCredito();}
+function _recalcularTotalesNotaCredito(){
+ let g10=0,g5=0,ex=0,iva10=0,iva5=0,total=0;notaCreditoCompraItems.forEach(x=>{const sub=Number(x.cantidad||0)*Number(x.precio_unitario||0),iva=Number(x.iva_tasa||0);if(iva===10){g10+=sub;iva10+=sub*10/110;}else if(iva===5){g5+=sub;iva5+=sub*5/105;}else ex+=sub;total+=sub;});
+ const set=(id,v)=>{const e=document.getElementById(id);if(e)e.value=Math.round(v);};set('nc-grav10',g10);set('nc-grav5',g5);set('nc-exento',ex);set('nc-iva10',iva10);set('nc-iva5',iva5);set('nc-total',total);
+ const f=facturaRelacionadaNC,info=document.getElementById('nc-saldo-info');if(info&&f)info.innerHTML='Factura original: <strong>G. '+Number(f.total_gs||f.total||0).toLocaleString('es-PY')+'</strong> · NC anteriores: <strong>G. '+Number(f.total_nc||0).toLocaleString('es-PY')+'</strong> · Esta NC: <strong>G. '+Math.round(total).toLocaleString('es-PY')+'</strong> · Saldo posterior estimado: <strong>G. '+Math.max(0,Math.round(Number(f.saldo_nc||0)-total)).toLocaleString('es-PY')+'</strong>';
+}
+async function guardarNotaCreditoCompra(){
+ _recalcularTotalesNotaCredito();const f=facturaRelacionadaNC;if(!f){alert('No podés registrar una Nota de Crédito sin seleccionar una factura relacionada que ya esté cargada en Kakuaa.');return;}
+ const body={proveedor_id:Number(document.getElementById('nc-proveedor').value)||0,tipo_comprobante_id:Number(document.getElementById('nc-tipo').value)||null,timbrado_id:Number(document.getElementById('nc-timbrado').value)||null,centro_costo_id:Number(document.getElementById('nc-centro-costo').value)||null,numero:document.getElementById('nc-numero').value.trim(),cdc:document.getElementById('nc-cdc').value.trim(),fecha:document.getElementById('nc-fecha').value,moneda_codigo:document.getElementById('nc-moneda').value||'PYG',tipo_cambio:Number(document.getElementById('nc-cambio').value||1),total_moneda:Number(document.getElementById('nc-total').value||0),gravado_10:Number(document.getElementById('nc-grav10').value||0),gravado_5:Number(document.getElementById('nc-grav5').value||0),exento:Number(document.getElementById('nc-exento').value||0),iva_10:Number(document.getElementById('nc-iva10').value||0),iva_5:Number(document.getElementById('nc-iva5').value||0),comprobante_relacionado_id:Number(f.id),cdc_relacionado:f.cdc||'',timbrado_relacionado:f.timbrado_relacionado||'',motivo_nc:document.getElementById('nc-motivo').value,observacion:document.getElementById('nc-observacion').value.trim(),origen:'MANUAL',detalle:notaCreditoCompraItems.map(x=>({...x,cantidad:Number(x.cantidad||0),precio_unitario:Number(x.precio_unitario||0),iva_tasa:Number(x.iva_tasa||0),subtotal:Number(x.cantidad||0)*Number(x.precio_unitario||0),item_id:Number(x.item_id)||null,concepto_id:Number(x.concepto_id)||null,deposito_id:Number(x.deposito_id)||null,centro_costo_id:Number(x.centro_costo_id)||null}))};
+ if(!body.proveedor_id||!body.timbrado_id||!body.numero||!body.fecha||!body.centro_costo_id||!body.motivo_nc||!body.total_moneda){alert('Proveedor, timbrado, número, fecha, centro de costo, motivo y total son obligatorios.');return;}if(!body.detalle.length){alert('La Nota de Crédito debe tener al menos una línea.');return;}if(await validarTimbradoNotaCredito()===false)return;
+ const r=await fetchApi(API+'/api/compras/notas-credito',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)}),d=await r.json().catch(()=>({}));if(!r.ok){alert(d.error||'No se pudo registrar la Nota de Crédito.');return;}
+ alert('✓ Nota de Crédito registrada correctamente.');notaCreditoCompraItems=[];facturaRelacionadaNC=null;document.getElementById('nc-factura-relacionada').value='';document.getElementById('nc-factura-info').innerHTML='';renderDetalleNotaCredito();await cargarNotasCreditoCompra();await buscarFacturasRelacionablesNC();
+}
+async function validarTimbradoNotaCredito(){
+ const prov=Number(document.getElementById('nc-proveedor')?.value||0),numero=document.getElementById('nc-numero')?.value.trim(),fecha=document.getElementById('nc-fecha')?.value,tim=document.getElementById('nc-timbrado'),estado=document.getElementById('nc-timbrado-estado');if(!prov||!numero||!fecha||!tim?.value){if(estado)estado.textContent='Completá proveedor, timbrado, número y fecha para validar.';return false;}
+ const t=(tim._timbrados||[]).find(x=>Number(x.id)===Number(tim.value));if(!t){if(estado)estado.textContent='Seleccioná un timbrado.';return false;}const p=numero.split('-'),ok=p.length===3&&p.every(x=>/^\d+$/.test(x)),seq=ok?Number(p[2]):0,est=ok?p[0].padStart(3,'0'):'',pto=ok?p[1].padStart(3,'0'):'',valido=ok&&seq>=Number(t.numero_desde)&&seq<=Number(t.numero_hasta)&&(!t.establecimiento||String(t.establecimiento).padStart(3,'0')===est)&&(!t.punto_expedicion||String(t.punto_expedicion).padStart(3,'0')===pto)&&(!t.fecha_inicio||fecha>=String(t.fecha_inicio).slice(0,10))&&(!t.fecha_vencimiento||t.fecha_vencimiento==='3000-12-31'||fecha<=String(t.fecha_vencimiento).slice(0,10));
+ if(estado){estado.textContent=valido?'✓ Número, rango y vigencia del timbrado correctos.':'⚠ El número no coincide con el timbrado.';estado.style.color=valido?'#15803d':'#b42318';}return valido;
+}
+async function cargarNotasCreditoCompra(){
+ const r=await fetchApi(API+'/api/compras/comprobantes');if(!r.ok)return;const rows=await r.json(),n=(rows||[]).filter(x=>String(x.tipo_codigo||'').toUpperCase()==='NOTA_CREDITO'),el=document.getElementById('lista-notas-credito-compra');if(!el)return;
+ el.innerHTML=n.length?'<table class="tabla"><thead><tr><th>Fecha</th><th>Proveedor</th><th>NC</th><th>Factura relacionada</th><th>Timbrado factura</th><th>Total</th><th>Motivo</th><th>Estado</th></tr></thead><tbody>'+n.map(x=>'<tr><td>'+escapeHtml(x.fecha||'')+'</td><td>'+escapeHtml(x.proveedor||'')+'</td><td>'+escapeHtml(x.numero||'')+'</td><td>'+escapeHtml(x.comprobante_relacionado_id||'')+'</td><td>'+escapeHtml(x.timbrado_relacionado||'')+'</td><td>G. '+Number(x.total_gs||x.total||0).toLocaleString('es-PY')+'</td><td>'+escapeHtml(x.motivo_nc||'')+'</td><td>'+escapeHtml(x.estado||'')+'</td></tr>').join('')+'</tbody></table>':'<div class="sin-datos">No hay Notas de Crédito registradas.</div>';
+}
+
 async function guardarComprobanteCompra(){
  _recalcularTotalesFacturaCompra();
  const body={proveedor_id:Number(document.getElementById('comp-proveedor').value),tipo_comprobante_id:Number(document.getElementById('comp-tipo').value)||null,timbrado_id:Number(document.getElementById('comp-timbrado').value)||null,condicion_id:Number(document.getElementById('comp-condicion').value)||null,forma_pago_id:Number(document.getElementById('comp-forma-pago').value)||null,centro_costo_id:Number(document.getElementById('comp-centro-costo').value)||null,orden_compra_id:Number(document.getElementById('comp-orden').value)||null,numero:document.getElementById('comp-numero').value.trim(),cdc:document.getElementById('comp-cdc').value.trim(),fecha:document.getElementById('comp-fecha').value,gravado_10:Number(document.getElementById('comp-grav10').value||0),gravado_5:Number(document.getElementById('comp-grav5').value||0),exento:Number(document.getElementById('comp-exento').value||0),iva_10:Number(document.getElementById('comp-iva10').value||0),iva_5:Number(document.getElementById('comp-iva5').value||0),total:Number(document.getElementById('comp-total').value||0),observacion:document.getElementById('comp-observacion').value.trim(),origen:'MANUAL',detalle:detalleFacturaCompra.map(x=>({...x,item_id:Number(x.item_id)||null,concepto_id:Number(x.concepto_id)||null,deposito_id:Number(x.deposito_id)||null,centro_costo_id:Number(x.centro_costo_id)||null,cantidad:Number(x.cantidad||0),precio_unitario:Number(x.precio_unitario||0),iva_tasa:Number(x.iva_tasa||0),subtotal:Number(x.cantidad||0)*Number(x.precio_unitario||0)}))};
@@ -610,7 +685,7 @@ async function guardarComprobanteCompra(){
 async function cargarComprobantesCompra(){const r=await fetchApi(API+'/api/compras/comprobantes');if(!r.ok)return;const rows=await r.json();const el=document.getElementById('lista-compras');if(el)el.innerHTML='<table class="tabla"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Comprobante</th><th>Centro de costo</th><th>Total</th><th>Estado</th><th>Acción</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+escapeHtml(x.fecha)+'</td><td>'+escapeHtml(x.proveedor)+'</td><td>'+escapeHtml(x.numero)+'</td><td>'+escapeHtml((x.centro_costo_codigo||'')+(x.centro_costo_nombre?' — '+x.centro_costo_nombre:''))+'</td><td>'+Number(x.total||0).toLocaleString('es-PY')+'</td><td>'+escapeHtml(x.estado)+'</td><td>'+(x.estado==='anulado'?'—':'<button class="btn btn-rojo btn-pequeno" onclick="anularCompra('+x.id+')">Anular</button>')+'</td></tr>').join('')+'</tbody></table>';const pend=document.getElementById('lista-compras-pendientes');if(pend)pend.innerHTML='<table class="tabla"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Número</th><th>Total</th><th>Estado</th></tr></thead><tbody>'+rows.filter(x=>x.estado==='pendiente_contabilizar').map(x=>'<tr><td>'+escapeHtml(x.fecha)+'</td><td>'+escapeHtml(x.proveedor)+'</td><td>'+escapeHtml(x.numero)+'</td><td>'+Number(x.total||0).toLocaleString('es-PY')+'</td><td>'+escapeHtml(x.estado)+'</td></tr>').join('')+'</tbody></table>';}
 async function anularCompra(id){if(!confirm('¿Anular este comprobante?'))return;const r=await fetchApi(API+'/api/compras/comprobantes/'+id+'/estado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:'anulado'})});if(r.ok)await cargarComprobantesCompra();else alert('No se pudo anular.');}
 async function cargarReportesCompras(){const r1=await fetchApi(API+'/api/compras/reportes/proveedor');if(r1.ok){const rows=await r1.json();const e=document.getElementById('reporte-compras-proveedor');if(e)e.innerHTML='<table class="tabla"><thead><tr><th>Proveedor</th><th>Comprobantes</th><th>Total</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+escapeHtml(x.proveedor)+'</td><td>'+x.comprobantes+'</td><td>'+Number(x.total||0).toLocaleString('es-PY')+'</td></tr>').join('')+'</tbody></table>';}const r2=await fetchApi(API+'/api/compras/reportes/pendientes-pago');if(r2.ok){const rows=await r2.json();const e=document.getElementById('reporte-pendientes-pago');if(e)e.innerHTML='<table class="tabla"><thead><tr><th>Fecha</th><th>Proveedor</th><th>Número</th><th>Total</th><th>Estado</th></tr></thead><tbody>'+rows.map(x=>'<tr><td>'+escapeHtml(x.fecha)+'</td><td>'+escapeHtml(x.proveedor)+'</td><td>'+escapeHtml(x.numero)+'</td><td>'+Number(x.total||0).toLocaleString('es-PY')+'</td><td>'+escapeHtml(x.estado)+'</td></tr>').join('')+'</tbody></table>';}}
-async function prepararModuloCompras(){await cargarUnidadesMedida();await cargarComprasCatalogos();if(typeof cargarCentrosCostos==='function')await cargarCentrosCostos();await cargarDatosRegistrarFactura();await cargarComprobantesCompra();await cargarReportesCompras();document.getElementById('comp-timbrado')?.addEventListener('change',validarFacturaEnPantalla);}
+async function prepararModuloCompras(){await cargarUnidadesMedida();await cargarComprasCatalogos();if(typeof cargarCentrosCostos==='function')await cargarCentrosCostos();llenarSelectCentroCostoNC();await cargarDatosRegistrarFactura();await cargarComprobantesCompra();await cargarNotasCreditoCompra();await cargarReportesCompras();document.getElementById('comp-timbrado')?.addEventListener('change',validarFacturaEnPantalla);}
 
 setTimeout(()=>{if(typeof prepararModuloCompras==='function') prepararModuloCompras();},1200);
 
@@ -907,9 +982,18 @@ function _normalizarRespuestaConsultaMe(d, cdc){
   const n={
     ...d,
     ...x,
-    cdc:pick("cdc","CDC")||cdc,
-    CDC:pick("CDC","cdc")||cdc,
-    documento:{
+     cdc:pick("cdc","CDC")||cdc,
+     CDC:pick("CDC","cdc")||cdc,
+     tipo_documento:(()=>{
+       const raw=String(pick("tipo_documento","tipoDocumento","tipo_de","tipoDocumentoElectronico","dDesTipDE","tipo")||"").toUpperCase();
+       const code=String(pick("iTiDE","tipoDocumentoCodigo","c002")||"");
+       const cc=String(pick("CDC","cdc")||cdc);
+       if(raw.includes("NOTA")&&raw.includes("CRED"))return "NOTA_CREDITO";
+       if(code==="5"||cc.slice(0,2)==="05")return "NOTA_CREDITO";
+       if(code==="6"||cc.slice(0,2)==="06")return "NOTA_DEBITO";
+       return "FACTURA";
+     })(),
+     documento:{
       ...doc,
       cdc:pick("cdc","CDC")||cdc,
       fecha_emision:pick("fecha_emision","fechaEmision","dFeEmiDE","fecha")||"",
@@ -1088,6 +1172,7 @@ async function consultarSifenPorCdc(){
 }
 async function prepararImportacionSifen(){
  const d=window.ultimoSifenConsulta;if(!d?.documento){alert('Primero consultá un CDC válido.');return;}
+ if(String(d.tipo_documento||'').toUpperCase()==='NOTA_CREDITO')return prepararImportacionNotaCredito(d);
  const doc=d.documento;if(typeof cambiarVista==='function')cambiarVista('compras');await cargarComprasCatalogos();
  const td=d.totalDocumento||{};
  const mapa={
@@ -1106,6 +1191,15 @@ async function prepararImportacionSifen(){
  if(proveedor){const sel=document.getElementById('comp-proveedor');if(sel){sel.value=String(proveedor.id);await cargarTimbradosProveedor(proveedor.id);const tims=document.getElementById('comp-timbrado')?._timbrados||[];const tim=tims.find(x=>String(x.numero_timbrado||'')===String(doc.timbrado||''))||tims.find(x=>String(x.numero_timbrado||'')===String(doc.timbrado||''));if(tim)document.getElementById('comp-timbrado').value=String(tim.id);}}
  const resultado=document.getElementById('sifen-cdc-resultado');if(resultado){const n=document.createElement('div');n.className='inv-note';n.style.marginTop='10px';n.innerHTML='<strong>✓ DTE preparado para Compras.</strong><br>Se vincularon los datos disponibles y el proveedor cuando ya existe en Kakuaa. Ítems detectados: '+((d.items||[]).length)+'.';resultado.appendChild(n);}
  setTimeout(()=>document.getElementById('comp-cdc')?.focus(),150);
+}
+async function prepararImportacionNotaCredito(d){
+ const doc=d?.documento||{};
+ if(typeof cambiarVista==='function')cambiarVista('nota-credito-compra');
+ await cargarComprasCatalogos();inicializarBuscadorFacturaRelacionadaNC();
+ const mapa={'nc-cdc':d.cdc||d.CDC||'','nc-fecha':String(doc.fecha_emision||'').slice(0,10),'nc-numero':doc.numero_documento||'','nc-grav10':d.totalDocumento?.subTotal10??'','nc-grav5':d.totalDocumento?.subTotal05??'','nc-exento':d.totalDocumento?.subtotalExcenta??'','nc-iva10':d.totalDocumento?.iva10??'','nc-iva5':d.totalDocumento?.iva05??'','nc-total':d.totalDocumento?.totalNeto??doc.total??''};
+ Object.entries(mapa).forEach(([id,v])=>{const el=document.getElementById(id);if(el&&v!=='')el.value=v;});
+ const provs=comprasCatalogosCache.proveedores||[],ruc=String(doc.ruc_emisor||'').trim().toUpperCase(),prov=provs.find(x=>String(x.ruc||'').trim().toUpperCase()===ruc);
+ if(prov){const ps=document.getElementById('nc-proveedor');if(ps)ps.value=String(prov.id);await cargarTimbradosProveedorNC(prov.id);await buscarFacturasRelacionablesNC();}
 }
 function abrirConfiguracionSifenDesdeCompras(){
   if(typeof cambiarVista==='function'){
