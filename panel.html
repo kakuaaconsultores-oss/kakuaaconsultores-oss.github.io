@@ -872,7 +872,64 @@ input,select,textarea,button{max-width:100%;box-sizing:border-box}
 </div>
 <div id="lista-formas-pago-compra" style="margin-top:16px"></div></section>
 <section class="vista" id="vista-orden-compra"><h2 class="titulo-seccion">Orden de Compra</h2><p class="subtitulo">Preparada para emisión, recepción y conversión a factura.</p><div class="erp-placeholder"><div class="placeholder-grid"><div class="placeholder-box"><strong>Borrador → Emitida → Recibida → Facturada</strong><span>La estructura transaccional ya queda reservada.</span></div></div></div></section>
-<section class="vista" id="vista-nota-credito-compra"><h2 class="titulo-seccion">Registrar Nota de Crédito</h2><p class="subtitulo">La gestión completa se conectará con el comprobante origen y su impacto impositivo.</p><div class="erp-placeholder"><div class="placeholder-box"><strong>Próxima capa</strong><span>Documento origen, motivo, monto y contabilización.</span></div></div></section>
+<section class="vista" id="vista-nota-credito-compra">
+<h2 class="titulo-seccion">Registrar Nota de Crédito</h2>
+<p class="subtitulo">Registrá la Nota de Crédito como documento complementario y vinculala obligatoriamente con la factura recibida que modifica.</p>
+
+<div class="card">
+  <h3 style="margin-top:0">Factura relacionada</h3>
+  <div class="inv-note">🔒 Para registrar una Nota de Crédito, la factura relacionada debe estar previamente cargada en Kakuaa. Al seleccionar el proveedor se habilita la búsqueda por año y mes.</div>
+  <div class="form-grid" style="margin-top:12px">
+    <label style="display:grid;gap:6px"><span>Proveedor *</span><select id="nc-proveedor"><option value="">Seleccioná un proveedor</option></select></label>
+    <label style="display:grid;gap:6px"><span>Año</span><select id="nc-factura-anio"></select></label>
+    <label style="display:grid;gap:6px"><span>Mes</span><select id="nc-factura-mes"><option value="">Todos los meses</option><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></label>
+    <div style="display:flex;align-items:end"><button type="button" class="btn btn-azul" onclick="buscarFacturasRelacionablesNC()">🔎 Buscar facturas</button></div>
+    <label class="full" style="display:grid;gap:6px"><span>Factura relacionada *</span><select id="nc-factura-relacionada" disabled><option value="">Primero seleccioná proveedor y buscá por período</option></select></label>
+  </div>
+  <div id="nc-factura-info" class="inv-note" style="margin-top:12px"></div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h3 style="margin-top:0">Datos de la Nota de Crédito</h3>
+  <div class="form-grid">
+    <label style="display:grid;gap:6px"><span>Tipo de comprobante *</span><select id="nc-tipo" disabled><option value="">Nota de Crédito</option></select></label>
+    <label style="display:grid;gap:6px"><span>Timbrado NC *</span><select id="nc-timbrado"><option value="">Seleccioná un timbrado</option></select></label>
+    <label style="display:grid;gap:6px"><span>Número NC *</span><input id="nc-numero" placeholder="001-001-0000001"></label>
+    <label style="display:grid;gap:6px"><span>Fecha *</span><input id="nc-fecha" type="date"></label>
+    <label style="display:grid;gap:6px"><span>CDC / DTE</span><input id="nc-cdc" placeholder="CDC / DTE"></label>
+    <label style="display:grid;gap:6px"><span>Centro de costo *</span><select id="nc-centro-costo"><option value="">Seleccioná un centro</option></select></label>
+    <label style="display:grid;gap:6px"><span>Moneda *</span><select id="nc-moneda"><option value="PYG">PYG — Guaraní</option></select></label>
+    <label style="display:grid;gap:6px"><span>Tipo de cambio</span><input id="nc-cambio" type="number" step="0.000001" readonly value="1"></label>
+    <label class="full" style="display:grid;gap:6px"><span>Motivo de la Nota de Crédito *</span><select id="nc-motivo"><option value="">Seleccioná un motivo</option><option value="DEVOLUCION">Devolución</option><option value="DESCUENTO">Descuento</option><option value="BONIFICACION">Bonificación</option><option value="AJUSTE_PRECIO">Ajuste de precio</option><option value="ANULACION">Anulación</option><option value="INCOBRABLE">Crédito incobrable</option><option value="OTRO">Otro</option></select></label>
+    <div id="nc-timbrado-estado" class="full" style="font-size:.78rem;color:var(--texto-suave)">Seleccioná proveedor, timbrado, número y fecha para validar.</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+    <div><h3 style="margin:0">Detalle de la Nota de Crédito</h3><small style="color:var(--texto-suave)">Se precarga desde la factura relacionada y podés ajustar cantidades o importes para una NC parcial.</small></div>
+    <button type="button" class="btn btn-azul" onclick="agregarLineaNotaCredito()">＋ Agregar línea</button>
+  </div>
+  <div id="nc-detalle-wrap" style="margin-top:14px"></div>
+</div>
+
+<div class="card" style="margin-top:14px">
+ <div class="form-grid">
+  <label style="display:grid;gap:6px"><span>GRAV. 10% <small style="color:var(--texto-suave)">(editable)</small></span><input id="nc-grav10" type="number" step="1" min="0" inputmode="numeric" value="0"></label>
+  <label style="display:grid;gap:6px"><span>GRAV. 05% <small style="color:var(--texto-suave)">(editable)</small></span><input id="nc-grav5" type="number" step="1" min="0" inputmode="numeric" value="0"></label>
+  <label style="display:grid;gap:6px"><span>EXENTA <small style="color:var(--texto-suave)">(editable)</small></span><input id="nc-exento" type="number" step="1" min="0" inputmode="numeric" value="0"></label>
+  <label style="display:grid;gap:6px"><span>IVA 10% <small style="color:var(--texto-suave)">(automático)</small></span><input id="nc-iva10" type="number" step="1" readonly value="0"></label>
+  <label style="display:grid;gap:6px"><span>IVA 05% <small style="color:var(--texto-suave)">(automático)</small></span><input id="nc-iva5" type="number" step="1" readonly value="0"></label>
+  <label style="display:grid;gap:6px"><span>TOTAL <small style="color:var(--texto-suave)">(automático)</small></span><input id="nc-total" type="number" step="1" readonly value="0"></label>
+  <label style="display:grid;gap:6px"><span>Observación</span><input id="nc-observacion" class="full" placeholder="Observación"></label>
+ </div>
+ <div id="nc-saldo-info" class="inv-note" style="margin-top:12px"></div>
+ <div style="display:flex;justify-content:flex-end;margin-top:12px">
+  <button class="btn btn-verde" onclick="guardarNotaCreditoCompra()">✓ Registrar Nota de Crédito</button>
+ </div>
+</div>
+<div id="lista-notas-credito-compra" style="margin-top:16px"></div>
+</section>
 <section class="vista" id="vista-compras-pendientes"><h2 class="titulo-seccion">Compras Pendientes de Contabilización</h2><div id="lista-compras-pendientes"></div></section>
 <section class="vista" id="vista-notas-compra"><h2 class="titulo-seccion">Notas de Crédito / Débito</h2><div class="erp-placeholder"><div class="placeholder-box"><strong>Gestión de notas</strong><span>Consulta, aplicación y contabilización.</span></div></div></section>
 <section class="vista" id="vista-anulacion-compras"><h2 class="titulo-seccion">Anulación de Comprobantes</h2><div id="lista-anulacion-compras"></div></section>
