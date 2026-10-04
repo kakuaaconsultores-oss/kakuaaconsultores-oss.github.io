@@ -1107,7 +1107,7 @@ function _renderSifenNormalizado(d){
       (!provExiste?'<button class="btn btn-azul" onclick="sifenAgregarProveedorDesdeDte()">＋ Agregar proveedor</button>':'')+
       '<h4 style="margin:18px 0 8px">Ítems del DTE ('+items.length+')</h4><div style="overflow:auto"><table class="tabla"><thead><tr><th>Código proveedor</th><th>Descripción</th><th>Cantidad</th><th>Precio unitario</th><th>IVA</th><th>Total</th><th>Inventarios</th></tr></thead><tbody>'+
       (items.length?items.map((x,i)=>'<tr><td>'+esc(x.codigoInterno||x.codigo||"")+'</td><td>'+esc(x.descripcion||x.descripcionProducto||"")+'</td><td>'+esc(x.cantidad||"")+'</td><td>'+esc(fmt(x.precioUnitario??x.precio_unitario))+'</td><td>'+esc((x.tasaIva??x.iva??"")+"%")+'</td><td>'+esc(fmt(x.totalOperacionItem??x.totalBruto??x.subtotal))+'</td><td>'+articleActions.split('<br>')[i]+'</td></tr>').join(""):'<tr><td colspan="7">Sin ítems detectados.</td></tr>')+
-      '</tbody></table></div><div class="inv-actions" style="margin-top:16px"><button class="btn btn-verde" onclick="prepararImportacionSifen()">✓ Cargar en Registrar Factura</button><button class="btn btn-gris" onclick="document.getElementById(\'sifen-cdc-resultado\').innerHTML=\'\'">Cancelar</button></div></div>';
+      '</tbody></table></div><div class="inv-actions" style="margin-top:16px"><button class="btn btn-verde" onclick="prepararImportacionSifen()">✓ Aprobar y cargar en Compras</button><button class="btn btn-gris" onclick="document.getElementById(\'sifen-cdc-resultado\').innerHTML=\'\'">Cancelar</button></div></div>';
   });
 }
 
@@ -1154,11 +1154,8 @@ async function consultarSifenPorCdc(){
       const normalizado=_normalizarRespuestaConsultaMe(d,cdc);
       window.ultimoSifenConsulta=normalizado;
       if(typeof _renderSifenNormalizado==="function") _renderSifenNormalizado(normalizado);
-      // Carga automática en Compras: no obligamos al usuario a volver a copiar
-      // los datos del DTE manualmente.
-      if(normalizado.documento?.ruc_emisor || normalizado.documento?.total || normalizado.items?.length){
-        try{ await prepararImportacionSifen(); }catch(e){ console.error("No se pudo estirar el DTE a Compras",e); }
-      }
+      // La previsualización queda pendiente de aprobación. El botón de aprobación
+      // deriva automáticamente una Nota de Crédito al módulo correspondiente.
     }else{
       if(resultado)resultado.innerHTML='<div class="inv-note" style="border-left:4px solid var(--rojo,#b42318)"><strong>Consulta realizada, pero sin DTE reconocible.</strong><br>Estado: '+escapeHtml(String(d.estado||d.status||"SIN_DATOS"))+(d.proveedor_http?" · HTTP "+escapeHtml(String(d.proveedor_http)):"")+'<br>'+escapeHtml(d.mensaje||"La respuesta no contiene campos reconocibles del documento.")+'</div>';
     }
