@@ -817,13 +817,13 @@ input,select,textarea,button{max-width:100%;box-sizing:border-box}
 
 <div class="card" style="margin-top:14px">
  <div class="form-grid">
-  <input id="comp-grav10" type="number" step="0.01" placeholder="Gravado 10%">
-  <input id="comp-grav5" type="number" step="0.01" placeholder="Gravado 5%">
-  <input id="comp-exento" type="number" step="0.01" placeholder="Exento">
-  <input id="comp-iva10" type="number" step="0.01" placeholder="IVA 10%">
-  <input id="comp-iva5" type="number" step="0.01" placeholder="IVA 5%">
-  <input id="comp-total" type="number" step="0.01" placeholder="Total *">
-  <input id="comp-observacion" class="full" placeholder="Observación">
+  <label style="display:grid;gap:6px"><span>GRAV. 10% <small style="color:var(--texto-suave)">(editable)</small></span><input id="comp-grav10" type="number" step="1" min="0" inputmode="numeric" value="0"></label>
+  <label style="display:grid;gap:6px"><span>GRAV. 05% <small style="color:var(--texto-suave)">(editable)</small></span><input id="comp-grav5" type="number" step="1" min="0" inputmode="numeric" value="0"></label>
+  <label style="display:grid;gap:6px"><span>EXENTA <small style="color:var(--texto-suave)">(editable)</small></span><input id="comp-exento" type="number" step="1" min="0" inputmode="numeric" value="0"></label>
+  <label style="display:grid;gap:6px"><span>IVA 10% <small style="color:var(--texto-suave)">(automático)</small></span><input id="comp-iva10" type="number" step="1" readonly value="0"></label>
+  <label style="display:grid;gap:6px"><span>IVA 05% <small style="color:var(--texto-suave)">(automático)</small></span><input id="comp-iva5" type="number" step="1" readonly value="0"></label>
+  <label style="display:grid;gap:6px"><span>TOTAL <small style="color:var(--texto-suave)">(automático)</small></span><input id="comp-total" type="number" step="1" readonly value="0"></label>
+  <label style="display:grid;gap:6px"><span>Observación</span><input id="comp-observacion" class="full" placeholder="Observación"></label>
  </div>
  <div style="display:flex;justify-content:flex-end;margin-top:12px">
   <button class="btn btn-verde" onclick="guardarComprobanteCompra()">✓ Registrar factura</button>
