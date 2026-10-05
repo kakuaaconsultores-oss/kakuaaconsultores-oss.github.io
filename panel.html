@@ -1071,14 +1071,7 @@ input,select,textarea,button{max-width:100%;box-sizing:border-box}
             <section class="vista" id="vista-aprobacion-cargas">
                 <h2 class="titulo-seccion">Aprobación de Cargas</h2>
                 <p class="subtitulo">Control contable previo a que una operación de Compras o Ventas genere obligaciones de pago o cobro.</p>
-                <div class="erp-placeholder">
-                    <div class="erp-placeholder-head"><div><h3>Bandeja de aprobación contable</h3><p>Las cargas registradas en Compras y Ventas pasarán por revisión antes de habilitar su impacto financiero.</p></div><span class="module-pill">Control interno</span></div>
-                    <div class="placeholder-grid">
-                        <div class="placeholder-box"><strong>Pendiente</strong><span>La carga fue registrada pero todavía no está aprobada por Contabilidad.</span></div>
-                        <div class="placeholder-box"><strong>Aprobada</strong><span>La operación queda habilitada para continuar con Orden de Pago o Pago Recibido.</span></div>
-                        <div class="placeholder-box"><strong>Observada</strong><span>Contabilidad puede devolver la carga con motivo y mantener trazabilidad.</span></div>
-                    </div>
-                </div>
+                <div class="erp-placeholder-head"><div><h3>Bandeja de aprobación contable</h3><p>Las cargas de Compras esperan revisión antes de generar su asiento y afectar el inventario.</p></div><span class="module-pill">Control interno</span></div><div id="lista-aprobacion-cargas" class="tabla-panel"></div>
             </section>
 
             <section class="vista" id="vista-flujo-efectivo">
@@ -1751,6 +1744,8 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
             if (vista === 'usuarios') cargarUsuarios();
             if (vista === 'articulos-compra') { cargarComprasCatalogos(); }
             if (vista === 'cuentas-articulos') { cargarComprasCatalogos(); cargarCuentasArticulos(); }
+            if (vista === 'compras-pendientes') { if (typeof cargarComprasPendientesContabilizacion === 'function') cargarComprasPendientesContabilizacion(); }
+            if (vista === 'aprobacion-cargas') { if (typeof cargarAprobacionCargas === 'function') cargarAprobacionCargas(); }
         }
 
         function formatoGuarani(valor) {
@@ -2470,7 +2465,7 @@ function obtenerFormularioImpuestoActivo() {
     </script>
     <script src="perfil_cliente.js"></script>
     <script src="banca.js"></script>
-    <script src="compras.js?v=10-registrar-factura"></script>
+    <script src="compras.js?v=10-registrar-factura"></script><script src="contabilidad_aprobacion.js?v=1"></script>
     <script src="compras_ext.js"></script>
     <script src="compras_ext2.js"></script>
     <script src="inventarios.js"></script>
