@@ -107,7 +107,9 @@
         document.querySelectorAll('.sidebar .nav-item').forEach(function (el) { el.style.display = ''; });
         SIMPLE_VIEWS.forEach(function (m) {
             const item = document.querySelector('.sidebar .nav-item[data-vista="' + m.key + '"]');
-            if (item) item.remove();
+            // Nunca eliminar los accesos que pertenecen al grupo operativo
+            // Persona Física creado por persona_fisica.js.
+            if (item && !document.getElementById('nav-persona-fisica')?.contains(item)) item.remove();
         });
     }
 
