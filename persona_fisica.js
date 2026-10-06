@@ -47,7 +47,14 @@
       '<div class="nav-item nav-subitem" data-vista="pf-calendario" onclick="cambiarVista(\'pf-calendario\')">Calendario Tributario</div>'+
       '<div class="nav-item nav-subitem" data-vista="pf-configuracion" onclick="cambiarVista(\'pf-configuracion\')">Configuración</div>'+
       '</div>';
-    sidebar.insertBefore(group, sidebar.querySelector('.nav-label:last-of-type'));
+    // Persona Física se agrega como grupo de primer nivel, al mismo nivel
+    // visual que los módulos empresariales de KAKUAA DEMO S.A.
+    const primerLabel = sidebar.querySelector('.nav-label');
+    if (primerLabel) {
+      primerLabel.insertAdjacentElement('afterend', group);
+    } else {
+      sidebar.insertBefore(group, sidebar.firstChild);
+    }
   }
 
   function crearVistas(){
