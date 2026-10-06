@@ -6,12 +6,24 @@
         { key: 'pf-reportes', icon: '📑', label: 'Reportes Impositivos', desc: 'Reportes y controles tributarios del período.' }
     ];
 
+    function clienteEsPersonaFisica(cliente) {
+        if (!cliente) return false;
+        const tipo = String(cliente.tipo_persona || '').trim().toLowerCase();
+        const perfil = String(cliente.perfil || '').trim().toUpperCase();
+        return tipo === 'fisica' ||
+               tipo === 'persona_fisica' ||
+               tipo === 'persona física' ||
+               perfil.includes('PERSONA_FISICA');
+    }
+
     function clienteEsPersonaFisicaSimple(cliente) {
-        return !!cliente && cliente.tipo_persona === 'fisica' && cliente.perfil !== 'PERSONA_FISICA_IRE_GENERAL_IVA';
+        return clienteEsPersonaFisica(cliente) &&
+               String(cliente.perfil || '').trim().toUpperCase() !== 'PERSONA_FISICA_IRE_GENERAL_IVA';
     }
 
     function clienteEsPersonaFisicaERPCompleto(cliente) {
-        return !!cliente && cliente.tipo_persona === 'fisica' && cliente.perfil === 'PERSONA_FISICA_IRE_GENERAL_IVA';
+        return clienteEsPersonaFisica(cliente) &&
+               String(cliente.perfil || '').trim().toUpperCase() === 'PERSONA_FISICA_IRE_GENERAL_IVA';
     }
 
     function crearVistaSimple() {
@@ -64,6 +76,9 @@
 
         const nav = document.querySelector('.sidebar .sidebar-nav');
         if (!nav) return;
+
+        // La navegación operativa completa de Persona Física vive en persona_fisica.js.
+        // Estos accesos mínimos se mantienen como respaldo si ese módulo aún no creó su menú.
         SIMPLE_VIEWS.forEach(function (m) {
             const vista = m.key;
             if (nav.querySelector('[data-vista="' + vista + '"]')) return;
@@ -103,6 +118,9 @@
 
         if (simple) {
             ocultarNavegacionCompleja();
+            if (typeof window.refrescarModuloPorCliente === 'function') {
+                try { window.refrescarModuloPorCliente(); } catch (e) { console.error(e); }
+            }
             const actual = document.querySelector('.vista.activa')?.id || '';
             const permitidas = ['vista-pf-simple', 'vista-clientes', 'vista-usuarios', 'vista-crear', 'vista-tickets', 'vista-seguridad', 'vista-configuracion'];
             if (!permitidas.includes(actual) && !actual.startsWith('vista-pf-')) {
@@ -123,15 +141,19 @@
         return 'Persona Física · Vista simplificada';
     };
 
-    const originalCambiarClienteContexto = window.cambiarClienteContexto;
-    if (typeof originalCambiarClienteContexto === 'function') {
-        window.cambiarClienteContexto = async function (clienteId) {
-            const r = await originalCambiarClienteContexto(clienteId);
-            window.clienteActivoERP = window.clienteActivoERP || null;
-            window.aplicarPerfilClienteUI();
-            return r;
-        };
+    // El cambio de cliente se aplica desde la función real del panel.
+    // No intentamos reemplazar window.cambiarClienteContexto porque el panel
+    // invoca la declaración léxica directamente.
+    function refrescarPerfilTrasCambioCliente() {
+        try {
+            if (typeof window.aplicarPerfilClienteUI === 'function') {
+                window.aplicarPerfilClienteUI();
+            }
+        } catch (e) {
+            console.error('KAKUAA: no se pudo aplicar el perfil del cliente', e);
+        }
     }
+    window.refrescarPerfilTrasCambioCliente = refrescarPerfilTrasCambioCliente;
 
     window.addEventListener('load', function () {
         setTimeout(function () {
