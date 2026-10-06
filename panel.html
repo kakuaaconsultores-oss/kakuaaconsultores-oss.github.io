@@ -1551,6 +1551,7 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
                 const elegido = clientesERP.find(c => String(c.id) === String(guardado));
                 if (elegido) {
                     clienteActivoERP = elegido;
+                    window.clienteActivoERP = clienteActivoERP;
                     localStorage.setItem('cliente_activo_id', String(elegido.id));
                 } else {
                     clienteActivoERP = null;
@@ -1577,8 +1578,15 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
                 const data = await resp.json();
                 if (!resp.ok) { alert(data.error || 'No se pudo seleccionar el cliente.'); actualizarSelectorCliente(); return; }
                 clienteActivoERP = data.cliente;
+                window.clienteActivoERP = clienteActivoERP;
                 localStorage.setItem('cliente_activo_id', String(clienteId));
                 actualizarContextoClienteUI();
+                if (typeof window.aplicarPerfilClienteUI === 'function') {
+                    window.aplicarPerfilClienteUI();
+                }
+                if (typeof window.refrescarPerfilTrasCambioCliente === 'function') {
+                    window.refrescarPerfilTrasCambioCliente();
+                }
                 if (document.getElementById('cliente-contexto-activo')) {
                     document.getElementById('cliente-contexto-activo').textContent = data.cliente.razon_social;
                 }
