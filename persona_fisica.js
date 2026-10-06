@@ -86,17 +86,35 @@
   }
 
   function ocultarModulosEmpresariales(){
-    const nombres=['Finanzas','Contabilidad','Inventarios','Activo Fijo','Gestión de Personas','Banca'];
+    const activo=esPF();
+
+    // En Persona Física no dejamos ningún grupo empresarial visible.
+    // Esto incluye Gestión, Facturación, Compras, Finanzas, Contabilidad,
+    // Inventarios, Activo Fijo, Gestión de Personas y Banca.
     document.querySelectorAll('.nav-group').forEach(g=>{
       const t=(g.querySelector('.nav-group-title')?.textContent||'').trim();
-      if(nombres.some(n=>t.includes(n))) g.style.display=esPF()?'none':'';
+      const esPFGroup=g.id==='nav-persona-fisica';
+      if(activo){
+        g.style.display=esPFGroup?'block':'none';
+      }else{
+        g.style.display='';
+      }
     });
+
+    // Documentos es un acceso directo (no pertenece a un nav-group).
+    const directosOcultos=['documentos'];
+    document.querySelectorAll('.sidebar .nav-item').forEach(n=>{
+      const vista=n.getAttribute('data-vista');
+      if(directosOcultos.includes(vista)) n.style.display=activo?'none':'flex';
+    });
+
     ['pf-inicio','pf-ingresos','pf-egresos','pf-cobrar','pf-pagar','pf-impuestos','pf-formularios','pf-reportes','pf-documentos','pf-calendario','pf-configuracion'].forEach(v=>{
       const n=document.querySelector('[data-vista="'+v+'"]');
-      if(n) n.style.display=esPF()?'flex':'none';
+      if(n) n.style.display=activo?'flex':'none';
     });
+
     const pf=document.getElementById('nav-persona-fisica');
-    if(pf) pf.style.display=esPF()?'block':'none';
+    if(pf) pf.style.display=activo?'block':'none';
   }
 
   async function cargarResumen(){
