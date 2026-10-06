@@ -1558,6 +1558,8 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
                     localStorage.removeItem('cliente_activo_id');
                 }
                 actualizarContextoClienteUI();
+                if (typeof window.aplicarPerfilClienteUI === 'function') window.aplicarPerfilClienteUI();
+                if (typeof window.refrescarPerfilTrasCambioCliente === 'function') window.refrescarPerfilTrasCambioCliente();
                 cargarListaClientes();
             } catch (e) {
                 const select = document.getElementById('selector-cliente');
@@ -1569,8 +1571,10 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
         async function cambiarClienteContexto(clienteId) {
             if (!clienteId) {
                 clienteActivoERP = null;
+                window.clienteActivoERP = null;
                 localStorage.removeItem('cliente_activo_id');
                 actualizarContextoClienteUI();
+                if (typeof window.aplicarPerfilClienteUI === 'function') window.aplicarPerfilClienteUI();
                 return;
             }
             try {
