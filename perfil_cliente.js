@@ -8,12 +8,23 @@
 
     function clienteEsPersonaFisica(cliente) {
         if (!cliente) return false;
-        const tipo = String(cliente.tipo_persona || '').trim().toLowerCase();
-        const perfil = String(cliente.perfil || '').trim().toUpperCase();
-        return tipo === 'fisica' ||
-               tipo === 'persona_fisica' ||
-               tipo === 'persona física' ||
-               perfil.includes('PERSONA_FISICA');
+        const valores = [
+            cliente.tipo_persona,
+            cliente.tipo,
+            cliente.tipo_cliente,
+            cliente.tipoPersona,
+            cliente.persona,
+            cliente.perfil,
+            cliente.perfil_tributario
+        ].map(function (v) { return String(v || '').trim().toLowerCase(); });
+
+        return valores.some(function (v) {
+            return v === 'fisica' ||
+                   v === 'persona_fisica' ||
+                   v === 'persona física' ||
+                   v.includes('persona_fisica') ||
+                   v.includes('persona física');
+        });
     }
 
     function clienteEsPersonaFisicaSimple(cliente) {
