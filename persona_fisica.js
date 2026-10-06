@@ -101,8 +101,17 @@
 
   async function cargarResumen(){
     if(!esPF()) return;
-    const r=await pfFetch('/resumen'); const d=await r.json(); if(!r.ok)return;
-    ['ingresos','egresos','por_cobrar','por_pagar'].forEach(k=>{const el=document.getElementById('pf-total-'+k.replace('_','-')); if(el)el.textContent=money(d[k]);});
+    try{
+      const r=await pfFetch('/resumen');
+      const d=await r.json().catch(()=>({}));
+      if(!r.ok){
+        console.error('KAKUAA Persona Física: no se pudo cargar el resumen',r.status,d);
+        return;
+      }
+      ['ingresos','egresos','por_cobrar','por_pagar'].forEach(k=>{const el=document.getElementById('pf-total-'+k.replace('_','-')); if(el)el.textContent=money(d[k]);});
+    }catch(e){
+      console.error('KAKUAA Persona Física: error de conexión al resumen',e);
+    }
   }
 
   async function cargarCatalogos(){
@@ -191,9 +200,23 @@
   };
 
   function hook(){
-    crearMenu();crearVistas();ocultarModulosEmpresariales();
+    crearMenu();
+    crearVistas();
+
+    // La navegación del perfil se aplica antes de cualquier consulta al backend.
+    // Así, un fallo temporal de CORS/API nunca deja visibles los módulos empresariales.
+    ocultarModulosEmpresariales();
+
     const old=window.refrescarModuloPorCliente;
-    window.refrescarModuloPorCliente=function(){ if(typeof old==='function')old(); crearMenu();crearVistas();ocultarModulosEmpresariales(); if(esPF())cargarResumen(); };
+    window.refrescarModuloPorCliente=function(){
+      if(typeof old==='function'){
+        try{ old(); }catch(e){ console.error('KAKUAA: error refrescando módulos base',e); }
+      }
+      crearMenu();
+      crearVistas();
+      ocultarModulosEmpresariales();
+      if(esPF())cargarResumen();
+    };
     if(esPF())cargarResumen();
   }
 
