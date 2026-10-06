@@ -51,7 +51,7 @@
             '</div>' +
             '<div class="module-grid">' +
                 SIMPLE_VIEWS.map(function (m) {
-                    return '<div class="module-card" onclick="cambiarVista(\\'pf-' + m.key.replace('pf-','') + '\\')">' +
+                    return '<div class="module-card" onclick="cambiarVista(&quot;pf-' + m.key.replace('pf-','') + '&quot;)">' +
                         '<div class="module-icon">' + m.icon + '</div><h3>' + m.label + '</h3><p>' + m.desc + '</p>' +
                     '</div>';
                 }).join('') +
