@@ -47,6 +47,13 @@
       '<div class="nav-item nav-subitem" data-vista="pf-calendario" onclick="cambiarVista(\'pf-calendario\')">Calendario Tributario</div>'+
       '<div class="nav-item nav-subitem" data-vista="pf-configuracion" onclick="cambiarVista(\'pf-configuracion\')">Configuración</div>'+
       '</div>';
+    // El perfil simplificado antiguo podía crear Ingresos/Egresos/Reportes
+    // como accesos sueltos. Los eliminamos para que todo quede dentro del
+    // grupo Persona Física y no aparezca duplicado al final del menú.
+    sidebar.querySelectorAll('.nav-item[data-vista="pf-ingresos"], .nav-item[data-vista="pf-egresos"], .nav-item[data-vista="pf-reportes"]').forEach(function(item){
+      if (!group.contains(item)) item.remove();
+    });
+
     // Persona Física se agrega como grupo de primer nivel, al mismo nivel
     // visual que los módulos empresariales de KAKUAA DEMO S.A.
     const primerLabel = sidebar.querySelector('.nav-label');
@@ -122,6 +129,14 @@
 
     const pf=document.getElementById('nav-persona-fisica');
     if(pf) pf.style.display=activo?'block':'none';
+
+    // Elimina cualquier acceso PF suelto creado por el perfil simplificado.
+    // Los únicos accesos PF deben vivir dentro de nav-persona-fisica.
+    if (activo && pf) {
+      document.querySelectorAll('.sidebar .nav-item[data-vista^="pf-"]').forEach(function(item){
+        if (!pf.contains(item)) item.remove();
+      });
+    }
   }
 
   async function cargarResumen(){
