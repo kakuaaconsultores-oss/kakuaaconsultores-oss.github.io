@@ -1328,7 +1328,7 @@ input,select,textarea,button{max-width:100%;box-sizing:border-box}
 
     <script>
         const API = 'https://backend-ruc-1.onrender.com';
-function fetchApi(input, init={}) { const headers=new Headers(init.headers||{}); const method=(init.method||'GET').toUpperCase(); const csrf=localStorage.getItem('csrf_token')||''; const sessionToken=sessionStorage.getItem('session_token')||''; if(sessionToken) headers.set('Authorization','Bearer '+sessionToken); const clienteActivo=localStorage.getItem('cliente_activo_id')||''; let pathname=''; try { pathname=new URL(input, window.location.href).pathname; } catch (_) {} const rutasSinCliente=['/api/sesion','/api/login','/api/login/verify-otp','/api/login/resend-otp','/api/logout']; if(clienteActivo && !rutasSinCliente.includes(pathname)) headers.set('X-Cliente-ID',clienteActivo); if(!['GET','HEAD','OPTIONS'].includes(method) && csrf) headers.set('X-CSRF-Token',csrf); return fetch(input,{...init,headers,credentials:'include'}); }
+function fetchApi(input, init={}) { const headers=new Headers(init.headers||{}); const method=(init.method||'GET').toUpperCase(); const csrf=localStorage.getItem('csrf_token')||''; const sessionToken=sessionStorage.getItem('session_token')||''; if(sessionToken) headers.set('Authorization','Bearer '+sessionToken); const clienteActivo=localStorage.getItem('cliente_activo_id')||''; const periodoActivo=localStorage.getItem('periodo_activo_erp')||''; let pathname=''; try { pathname=new URL(input, window.location.href).pathname; } catch (_) {} const rutasSinCliente=['/api/sesion','/api/login','/api/login/verify-otp','/api/login/resend-otp','/api/logout']; if(clienteActivo && !rutasSinCliente.includes(pathname)) headers.set('X-Cliente-ID',clienteActivo); if(periodoActivo && !rutasSinCliente.includes(pathname)) headers.set('X-Periodo-Fiscal',periodoActivo); if(!['GET','HEAD','OPTIONS'].includes(method) && csrf) headers.set('X-CSRF-Token',csrf); return fetch(input,{...init,headers,credentials:'include'}); }
 
         let usuarioSeleccionado = null;
         let docsActuales = [];
@@ -1590,11 +1590,11 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
             const id=clienteSelectorPendienteId;
             const elegido=clientesERP.find(c=>String(c.id)===String(id));
             if(!elegido)return;
+            const anioSeleccionado=Number(document.getElementById('cliente-selector-periodo')?.value || new Date().getFullYear());
             await cambiarClienteContexto(id);
             if(clienteActivoERP && String(clienteActivoERP.id)===String(id)) {
                 try {
-                    const selectPeriodo=document.getElementById('cliente-selector-periodo');
-                    const anio=Number(selectPeriodo?.value || new Date().getFullYear());
+                    const anio=anioSeleccionado;
                     await confirmarPeriodoFiscal(id,anio);
                     cerrarSelectorCliente();
                     cambiarVista(esAdmin() ? 'dashboard' : 'tareas');
