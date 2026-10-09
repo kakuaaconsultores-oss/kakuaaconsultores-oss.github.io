@@ -79,7 +79,7 @@
         '<div class="placeholder-grid"><div class="placeholder-box"><strong>IVA</strong><span>Vencimientos mensuales según obligación.</span></div><div class="placeholder-box"><strong>IRP-RSP</strong><span>Control anual y obligaciones relacionadas.</span></div><div class="placeholder-box"><strong>Alertas</strong><span>Próximos vencimientos visibles desde Inicio.</span></div></div>'),
       shell('pf-configuracion','Configuración','Parámetros propios de Persona Física.',
         '<div class="placeholder-grid"><div class="placeholder-box"><strong>Medios de cobro/pago</strong><span>Efectivo, transferencia, cheque, tarjeta y otros.</span></div><div class="placeholder-box"><strong>Categorías</strong><span>Clasificación de ingresos y egresos.</span></div><div class="placeholder-box"><strong>Perfil tributario</strong><span>Se toma del cliente activo.</span></div></div><div class="quick-actions" style="margin-top:16px"><button class="btn btn-gris" onclick="pfMostrarConfiguracion()">Administrar categorías</button></div><div id="pf-config-lista" style="margin-top:16px"></div>'),
-      shell('pf-cotizaciones','Cotizaciones','Catastro · cotizaciones y seguimiento comercial.','<div class="sin-datos">Pantalla preparada para desarrollar el registro y seguimiento de cotizaciones.</div>'),
+      shell('pf-cotizaciones','Cotizaciones','Tipos de cambio oficiales publicados por la DNIT. Seleccioná mes y año para consultar el historial.','<div class="quick-actions" style="align-items:end;gap:12px;flex-wrap:wrap"><div><label for="pf-cot-mes">Mes</label><select id="pf-cot-mes" class="form-control"><option value="1">Enero</option><option value="2">Febrero</option><option value="3">Marzo</option><option value="4">Abril</option><option value="5">Mayo</option><option value="6">Junio</option><option value="7">Julio</option><option value="8">Agosto</option><option value="9">Septiembre</option><option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option></select></div><div><label for="pf-cot-anio">Año</label><input id="pf-cot-anio" class="form-control" type="number" min="2010" max="2100" value="'+new Date().getFullYear()+'" style="max-width:120px"></div><button class="btn btn-verde" onclick="pfCargarCotizaciones()">Consultar DNIT</button><button class="btn btn-gris" onclick="pfCargarCotizaciones(true)">↻ Actualizar</button></div><div id="pf-cotizaciones-estado" class="sin-datos" style="margin-top:14px">Seleccioná un mes y año para consultar las cotizaciones oficiales.</div><div id="pf-cotizaciones-tabla" class="table-wrap" style="margin-top:14px;overflow-x:auto"></div><div style="margin-top:12px;font-size:.8rem;color:var(--texto-suave)">Fuente oficial: <a href="https://www.dnit.gov.py/web/portal-institucional/cotizaciones" target="_blank" rel="noopener">DNIT · Historial de cotizaciones</a></div>'),
       shell('pf-personas','Personas','Catastro · clientes, proveedores y terceros.','<div class="quick-actions"><button class="btn btn-verde" onclick="pfFormularioPersona()">＋ Nueva persona</button><button class="btn btn-gris" onclick="pfCargarPersonas()">↻ Actualizar</button></div><div id="pf-persona-form" style="margin-top:16px"></div><div id="pf-personas-tabla" class="table-wrap" style="margin-top:16px"></div>'),
       shell('pf-dependientes','Dependientes','Catastro · vínculos familiares y dependientes tributarios.','<div class="quick-actions"><button class="btn btn-verde" onclick="pfFormularioDependiente()">＋ Nuevo dependiente</button><button class="btn btn-gris" onclick="pfCargarDependientes()">↻ Actualizar</button></div><div id="pf-dependiente-form" style="margin-top:16px"></div><div id="pf-dependientes-tabla" class="table-wrap" style="margin-top:16px"></div>'),
       shell('pf-timbrados','Timbrados','Catastro · control de timbrados y vigencias.','<div class="quick-actions"><button class="btn btn-verde" onclick="pfFormularioTimbrado()">＋ Nuevo timbrado</button><button class="btn btn-gris" onclick="pfCargarTimbrados()">↻ Actualizar</button></div><div id="pf-timbrado-form" style="margin-top:16px"></div><div id="pf-timbrados-tabla" class="table-wrap" style="margin-top:16px"></div>'),
@@ -227,6 +227,33 @@
   };
 
 
+  window.pfCargarCotizaciones=async function(forzar=false){
+    const mesEl=document.getElementById('pf-cot-mes');
+    const anioEl=document.getElementById('pf-cot-anio');
+    const estado=document.getElementById('pf-cotizaciones-estado');
+    const tabla=document.getElementById('pf-cotizaciones-tabla');
+    if(!mesEl||!anioEl||!estado||!tabla)return;
+    const mes=Number(mesEl.value), anio=Number(anioEl.value);
+    if(!Number.isInteger(mes)||mes<1||mes>12||!Number.isInteger(anio)||anio<2010||anio>new Date().getFullYear()+1){
+      estado.innerHTML='<span class="texto-error">Seleccioná un mes y año válidos.</span>';return;
+    }
+    estado.textContent='Consultando cotizaciones oficiales de la DNIT…';
+    tabla.innerHTML='';
+    try{
+      const d=await pfJson('/cotizaciones?mes='+mes+'&anio='+anio+(forzar?'&actualizar=1':''));
+      const fmt=v=>esc(v==null||v===''?'—':String(v));
+      const columnas=[
+        ['Dólar','dolar'],['Real','real'],['Peso argentino','peso_argentino'],
+        ['Yen','yen'],['Euro','euro'],['Libra','libra']
+      ];
+      const encabezado='<tr><th rowspan="2">Fecha</th>'+columnas.map(c=>'<th colspan="2">'+c[0]+'</th>').join('')+'</tr><tr>'+columnas.map(()=>'<th>Compra (₲)</th><th>Venta (₲)</th>').join('')+'</tr>';
+      tabla.innerHTML='<table><thead>'+encabezado+'</thead><tbody>'+d.cotizaciones.map(r=>'<tr><td>'+fmt(r.fecha)+'</td>'+columnas.map(c=>'<td style="text-align:right;white-space:nowrap">'+fmt(r[c[1]+'_compra'])+'</td><td style="text-align:right;white-space:nowrap">'+fmt(r[c[1]+'_venta'])+'</td>').join('')+'</tr>').join('')+'</tbody></table>';
+      estado.textContent=d.nombre_mes+' de '+d.anio+' · '+d.cantidad+' días publicados'+(d.cache?' · datos consultados recientemente':' · consultado el '+d.consultado_en.replace('T',' '))+(d.aviso?' · '+d.aviso:'');
+    }catch(e){
+      estado.innerHTML='<span class="texto-error">'+esc(e.message||'No se pudieron cargar las cotizaciones.')+'</span>';
+    }
+  };
+
   async function pfJson(path, options){
     const r=await pfFetch(path,options||{});
     const d=await r.json().catch(()=>({}));
@@ -356,6 +383,13 @@
     if(v==='pf-timbrados'){pfCargarTimbrados();}
     if(v==='pf-talonarios'){pfCargarTalonarios();}
     if(v==='pf-configuracion'){pfMostrarConfiguracion();}
+    if(v==='pf-cotizaciones'){
+      const mes=document.getElementById('pf-cot-mes');
+      const anio=document.getElementById('pf-cot-anio');
+      if(mes&&!mes.dataset.iniciado){mes.value=String(new Date().getMonth()+1);mes.dataset.iniciado='1';}
+      if(anio&&!anio.dataset.iniciado){anio.value=String(new Date().getFullYear());anio.dataset.iniciado='1';}
+      pfCargarCotizaciones();
+    }
   };
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',hook);else hook();
