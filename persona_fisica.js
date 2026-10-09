@@ -80,8 +80,8 @@
       shell('pf-configuracion','Configuración','Parámetros propios de Persona Física.',
         '<div class="placeholder-grid"><div class="placeholder-box"><strong>Medios de cobro/pago</strong><span>Efectivo, transferencia, cheque, tarjeta y otros.</span></div><div class="placeholder-box"><strong>Categorías</strong><span>Clasificación de ingresos y egresos.</span></div><div class="placeholder-box"><strong>Perfil tributario</strong><span>Se toma del cliente activo.</span></div></div><div class="quick-actions" style="margin-top:16px"><button class="btn btn-gris" onclick="pfMostrarConfiguracion()">Administrar categorías</button></div><div id="pf-config-lista" style="margin-top:16px"></div>'),
       shell('pf-cotizaciones','Cotizaciones','Catastro · cotizaciones y seguimiento comercial.','<div class="sin-datos">Pantalla preparada para desarrollar el registro y seguimiento de cotizaciones.</div>'),
-      shell('pf-personas','Personas','Catastro · clientes, proveedores y terceros.','<div class="sin-datos">Pantalla preparada para administrar personas y sus datos identificatorios.</div>'),
-      shell('pf-dependientes','Dependientes','Catastro · vínculos familiares y dependientes tributarios.','<div class="sin-datos">Pantalla preparada para registrar dependientes, parentesco y datos de respaldo.</div>'),
+      shell('pf-personas','Personas','Catastro · clientes, proveedores y terceros.','<div class="quick-actions"><button class="btn btn-verde" onclick="pfFormularioPersona()">＋ Nueva persona</button><button class="btn btn-gris" onclick="pfCargarPersonas()">↻ Actualizar</button></div><div id="pf-persona-form" style="margin-top:16px"></div><div id="pf-personas-tabla" class="table-wrap" style="margin-top:16px"></div>'),
+      shell('pf-dependientes','Dependientes','Catastro · vínculos familiares y dependientes tributarios.','<div class="quick-actions"><button class="btn btn-verde" onclick="pfFormularioDependiente()">＋ Nuevo dependiente</button><button class="btn btn-gris" onclick="pfCargarDependientes()">↻ Actualizar</button></div><div id="pf-dependiente-form" style="margin-top:16px"></div><div id="pf-dependientes-tabla" class="table-wrap" style="margin-top:16px"></div>'),
       shell('pf-timbrados','Timbrados','Catastro · control de timbrados y vigencias.','<div class="sin-datos">Pantalla preparada para registrar números, vigencias y establecimientos.</div>'),
       shell('pf-talonarios','Talonarios de recibo','Catastro · talonarios y numeración correlativa.','<div class="sin-datos">Pantalla preparada para controlar talonarios y numeración de recibos.</div>'),
       shell('pf-nc-emitidas','Notas de Crédito Emitidas','Movimientos · notas de crédito emitidas.','<div class="sin-datos">Pantalla preparada para registrar notas de crédito y vincularlas con sus comprobantes de origen.</div>'),
@@ -226,6 +226,79 @@
     await cargarResumen(); await cargarPendientes(o.tipo); await cargarOps(o.tipo); alert(tipo+' registrado. Saldo: '+money(d.saldo));
   };
 
+
+  async function pfJson(path, options){
+    const r=await pfFetch(path,options||{});
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok) throw new Error(d.error||'No se pudo completar la operación.');
+    return d;
+  }
+  window.pfCargarPersonas=async function(){
+    const el=document.getElementById('pf-personas-tabla'); if(!el)return;
+    el.innerHTML='<div class="sin-datos">Cargando personas…</div>';
+    try{
+      const rows=await pfJson('/personas');
+      el.innerHTML=rows.length?'<table><thead><tr><th>Nombre</th><th>Tipo</th><th>RUC</th><th>Documento</th><th>Contacto</th><th>Acciones</th></tr></thead><tbody>'+
+        rows.map(x=>'<tr><td>'+esc(x.nombre)+'</td><td>'+esc(x.tipo_persona)+'</td><td>'+esc(x.ruc||'—')+'</td><td>'+esc(x.documento||'—')+'</td><td>'+esc(x.telefono||'—')+(x.email?'<br>'+esc(x.email):'')+'</td><td><button class="btn btn-gris btn-pequeno" onclick="pfFormularioPersona('+x.id+')">Editar</button> <button class="btn btn-gris btn-pequeno" onclick="pfEliminarPersona('+x.id+')">Desactivar</button></td></tr>').join('')+
+        '</tbody></table>':'<div class="sin-datos">Todavía no hay personas registradas. Usá “Nueva persona” para comenzar.</div>';
+    }catch(e){el.innerHTML='<div class="sin-datos">'+esc(e.message)+'</div>';}
+  };
+  window.pfFormularioPersona=async function(id){
+    const el=document.getElementById('pf-persona-form'); if(!el)return;
+    let x={tipo_persona:'FISICA',nombre:'',ruc:'',documento:'',telefono:'',email:'',direccion:'',observacion:''};
+    if(id){try{x=(await pfJson('/personas')).find(p=>Number(p.id)===Number(id))||x;}catch(e){alert(e.message);return;}}
+    el.innerHTML='<div class="erp-placeholder"><h3>'+(id?'Editar persona':'Nueva persona')+'</h3><div class="form-grid">'+
+      '<div><label>Tipo *</label><select id="pf-p-tipo"><option value="FISICA">Persona física</option><option value="JURIDICA">Persona jurídica</option></select></div>'+
+      '<div><label>Nombre / Razón social *</label><input id="pf-p-nombre" maxlength="180" value="'+esc(x.nombre)+'"></div>'+
+      '<div><label>RUC</label><input id="pf-p-ruc" value="'+esc(x.ruc)+'"></div><div><label>Cédula / documento</label><input id="pf-p-doc" value="'+esc(x.documento)+'"></div>'+
+      '<div><label>Teléfono</label><input id="pf-p-tel" value="'+esc(x.telefono)+'"></div><div><label>Correo electrónico</label><input id="pf-p-email" type="email" value="'+esc(x.email)+'"></div>'+
+      '<div><label>Dirección</label><input id="pf-p-dir" value="'+esc(x.direccion)+'"></div><div><label>Observación</label><input id="pf-p-obs" value="'+esc(x.observacion)+'"></div>'+
+      '</div><div class="quick-actions"><button class="btn btn-verde" onclick="pfGuardarPersona('+(id||'null')+')">Guardar</button><button class="btn btn-gris" onclick="document.getElementById(\'pf-persona-form\').innerHTML=\'\'">Cancelar</button></div></div>';
+    document.getElementById('pf-p-tipo').value=x.tipo_persona||'FISICA';
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  window.pfGuardarPersona=async function(id){
+    const payload={tipo_persona:document.getElementById('pf-p-tipo').value,nombre:document.getElementById('pf-p-nombre').value,ruc:document.getElementById('pf-p-ruc').value,documento:document.getElementById('pf-p-doc').value,telefono:document.getElementById('pf-p-tel').value,email:document.getElementById('pf-p-email').value,direccion:document.getElementById('pf-p-dir').value,observacion:document.getElementById('pf-p-obs').value};
+    try{await pfJson('/personas'+(id?'/'+id:''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});document.getElementById('pf-persona-form').innerHTML='';await pfCargarPersonas();alert('Persona guardada correctamente.');}
+    catch(e){alert(e.message);}
+  };
+  window.pfEliminarPersona=async function(id){
+    if(!confirm('¿Desactivar esta persona? No se borrará físicamente del registro.'))return;
+    try{await pfJson('/personas/'+id,{method:'DELETE'});await pfCargarPersonas();}catch(e){alert(e.message);}
+  };
+  window.pfCargarDependientes=async function(){
+    const el=document.getElementById('pf-dependientes-tabla');if(!el)return;
+    el.innerHTML='<div class="sin-datos">Cargando dependientes…</div>';
+    try{
+      const rows=await pfJson('/dependientes');
+      el.innerHTML=rows.length?'<table><thead><tr><th>Nombre</th><th>Parentesco</th><th>Documento</th><th>Fecha nacimiento</th><th>RUC</th><th>Acciones</th></tr></thead><tbody>'+
+        rows.map(x=>'<tr><td>'+esc(x.nombre)+'</td><td>'+esc(x.parentesco)+'</td><td>'+esc(x.documento||'—')+'</td><td>'+esc(x.fecha_nacimiento||'—')+'</td><td>'+esc(x.ruc||'—')+'</td><td><button class="btn btn-gris btn-pequeno" onclick="pfFormularioDependiente('+x.id+')">Editar</button> <button class="btn btn-gris btn-pequeno" onclick="pfEliminarDependiente('+x.id+')">Desactivar</button></td></tr>').join('')+
+        '</tbody></table>':'<div class="sin-datos">Todavía no hay dependientes registrados. Usá “Nuevo dependiente” para comenzar.</div>';
+    }catch(e){el.innerHTML='<div class="sin-datos">'+esc(e.message)+'</div>';}
+  };
+  window.pfFormularioDependiente=async function(id){
+    const el=document.getElementById('pf-dependiente-form');if(!el)return;
+    let x={nombre:'',parentesco:'HIJO/A',documento:'',fecha_nacimiento:'',ruc:'',observacion:''};
+    if(id){try{x=(await pfJson('/dependientes')).find(p=>Number(p.id)===Number(id))||x;}catch(e){alert(e.message);return;}}
+    el.innerHTML='<div class="erp-placeholder"><h3>'+(id?'Editar dependiente':'Nuevo dependiente')+'</h3><div class="form-grid">'+
+      '<div><label>Nombre completo *</label><input id="pf-d-nombre" maxlength="180" value="'+esc(x.nombre)+'"></div>'+
+      '<div><label>Parentesco *</label><select id="pf-d-parentesco"><option>HIJO/A</option><option>CONYUGE</option><option>PADRE/MADRE</option><option>OTRO</option></select></div>'+
+      '<div><label>Cédula / documento</label><input id="pf-d-doc" value="'+esc(x.documento)+'"></div><div><label>Fecha de nacimiento</label><input id="pf-d-fecha" type="date" value="'+esc(x.fecha_nacimiento)+'"></div>'+
+      '<div><label>RUC (si corresponde)</label><input id="pf-d-ruc" value="'+esc(x.ruc)+'"></div><div><label>Observación / respaldo</label><input id="pf-d-obs" value="'+esc(x.observacion)+'"></div>'+
+      '</div><div class="quick-actions"><button class="btn btn-verde" onclick="pfGuardarDependiente('+(id||'null')+')">Guardar</button><button class="btn btn-gris" onclick="document.getElementById(\'pf-dependiente-form\').innerHTML=\'\'">Cancelar</button></div></div>';
+    document.getElementById('pf-d-parentesco').value=x.parentesco||'HIJO/A';
+    el.scrollIntoView({behavior:'smooth',block:'start'});
+  };
+  window.pfGuardarDependiente=async function(id){
+    const payload={nombre:document.getElementById('pf-d-nombre').value,parentesco:document.getElementById('pf-d-parentesco').value,documento:document.getElementById('pf-d-doc').value,fecha_nacimiento:document.getElementById('pf-d-fecha').value,ruc:document.getElementById('pf-d-ruc').value,observacion:document.getElementById('pf-d-obs').value};
+    try{await pfJson('/dependientes'+(id?'/'+id:''),{method:id?'PUT':'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});document.getElementById('pf-dependiente-form').innerHTML='';await pfCargarDependientes();alert('Dependiente guardado correctamente.');}
+    catch(e){alert(e.message);}
+  };
+  window.pfEliminarDependiente=async function(id){
+    if(!confirm('¿Desactivar este dependiente? No se borrará físicamente del registro.'))return;
+    try{await pfJson('/dependientes/'+id,{method:'DELETE'});await pfCargarDependientes();}catch(e){alert(e.message);}
+  };
+
   window.pfCargarOperaciones=cargarOps;
   window.pfCargarReportes=async function(){
     const r=await pfFetch('/reportes');const d=await r.json();const el=document.getElementById('pf-tabla-reportes');if(!el)return;
@@ -269,6 +342,8 @@
     if(v==='pf-cobrar'){cargarPendientes('INGRESO');}
     if(v==='pf-pagar'){cargarPendientes('EGRESO');}
     if(v==='pf-reportes'){pfCargarReportes();}
+    if(v==='pf-personas'){pfCargarPersonas();}
+    if(v==='pf-dependientes'){pfCargarDependientes();}
     if(v==='pf-configuracion'){pfMostrarConfiguracion();}
   };
 
