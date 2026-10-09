@@ -32,38 +32,20 @@
     const group=document.createElement('div');
     group.id='nav-persona-fisica';
     group.className='nav-group';
+    const item=(id,label)=>'<div class="nav-item nav-subitem" data-vista="'+id+'" onclick="cambiarVista(\\''+id+'\\')">'+label+'</div>';
+    const subgroup=(label,icon,items)=>'<div class="pf-subgroup"><div class="nav-group-title" onclick="toggleNavGroup(this)"><span><span class="nav-icon">'+icon+'</span> '+label+'</span><span class="chevron">⌄</span></div><div class="nav-subitems">'+items+'</div></div>';
     group.innerHTML=
       '<div class="nav-group-title" onclick="toggleNavGroup(this)"><span><span class="nav-icon">👤</span> Persona Física</span><span class="chevron">⌄</span></div>'+
       '<div class="nav-subitems">'+
-      '<div class="nav-item nav-subitem" data-vista="pf-inicio" onclick="cambiarVista(\'pf-inicio\')">Resumen</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-ingresos" onclick="cambiarVista(\'pf-ingresos\')">Ingresos</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-egresos" onclick="cambiarVista(\'pf-egresos\')">Egresos</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-cobrar" onclick="cambiarVista(\'pf-cobrar\')">Documentos a Cobrar</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-pagar" onclick="cambiarVista(\'pf-pagar\')">Documentos a Pagar</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-impuestos" onclick="cambiarVista(\'pf-impuestos\')">Impuestos</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-formularios" onclick="cambiarVista(\'pf-formularios\')">Formularios</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-reportes" onclick="cambiarVista(\'pf-reportes\')">Reportes</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-documentos" onclick="cambiarVista(\'pf-documentos\')">Documentos</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-calendario" onclick="cambiarVista(\'pf-calendario\')">Calendario Tributario</div>'+
-      '<div class="nav-item nav-subitem" data-vista="pf-configuracion" onclick="cambiarVista(\'pf-configuracion\')">Configuración</div>'+
+      subgroup('Catastro','🗂️',item('pf-cotizaciones','Cotizaciones')+item('pf-personas','Personas')+item('pf-dependientes','Dependientes')+item('pf-timbrados','Timbrados')+item('pf-talonarios','Talonarios de recibo'))+
+      subgroup('Movimientos','🔄',item('pf-ingresos','Ingresos')+item('pf-egresos','Egresos')+item('pf-nc-emitidas','Notas de Crédito Emitidas')+item('pf-nc-recibidas','Notas de Crédito Recibidas')+item('pf-recibos-cobro','Recibos de cobro')+item('pf-recibos-pago','Recibos de pago'))+
+      subgroup('Reportes','📊',item('pf-cobrar','Documentos a cobrar')+item('pf-pagar','Documentos a pagar')+item('pf-libro-ventas','Libro IVA Ventas')+item('pf-libro-compras','Libro IVA Compras')+item('pf-libro-ingresos','Libro Ingresos')+item('pf-libro-egresos','Libro Egresos')+item('pf-rg9021','Registro de Comprobantes (RG 90/21)')+item('pf-form120','Formulario 120 · IVA')+item('pf-form515','Formulario 515 · IRP-RSP')+item('pf-form516','Formulario 516 · IRP-RGC'))+
       '</div>';
-    // El perfil simplificado antiguo podía crear Ingresos/Egresos/Reportes
-    // como accesos sueltos. Los eliminamos para que todo quede dentro del
-    // grupo Persona Física y no aparezca duplicado al final del menú.
-    sidebar.querySelectorAll('.nav-item[data-vista="pf-ingresos"], .nav-item[data-vista="pf-egresos"], .nav-item[data-vista="pf-reportes"]').forEach(function(item){
-      if (!group.contains(item)) item.remove();
-    });
-
-    // Persona Física se agrega como grupo de primer nivel, al mismo nivel
-    // visual que los módulos empresariales de KAKUAA DEMO S.A.
-    const primerLabel = sidebar.querySelector('.nav-label');
-    if (primerLabel) {
-      primerLabel.insertAdjacentElement('afterend', group);
-    } else {
-      sidebar.insertBefore(group, sidebar.firstChild);
-    }
+    sidebar.querySelectorAll('.nav-item[data-vista^="pf-"]').forEach(function(n){if(!group.contains(n))n.remove();});
+    const primerLabel=sidebar.querySelector('.nav-label');
+    if(primerLabel)primerLabel.insertAdjacentElement('afterend',group);
+    else sidebar.insertBefore(group,sidebar.firstChild);
   }
-
   function crearVistas(){
     const main=document.querySelector('.contenido');
     if(!main || document.getElementById('vista-pf-inicio')) return;
@@ -95,7 +77,24 @@
       shell('pf-calendario','Calendario Tributario','Control de obligaciones y vencimientos. Se integrará con las obligaciones del perfil tributario.',
         '<div class="placeholder-grid"><div class="placeholder-box"><strong>IVA</strong><span>Vencimientos mensuales según obligación.</span></div><div class="placeholder-box"><strong>IRP-RSP</strong><span>Control anual y obligaciones relacionadas.</span></div><div class="placeholder-box"><strong>Alertas</strong><span>Próximos vencimientos visibles desde Inicio.</span></div></div>'),
       shell('pf-configuracion','Configuración','Parámetros propios de Persona Física.',
-        '<div class="placeholder-grid"><div class="placeholder-box"><strong>Medios de cobro/pago</strong><span>Efectivo, transferencia, cheque, tarjeta y otros.</span></div><div class="placeholder-box"><strong>Categorías</strong><span>Clasificación de ingresos y egresos.</span></div><div class="placeholder-box"><strong>Perfil tributario</strong><span>Se toma del cliente activo.</span></div></div><div class="quick-actions" style="margin-top:16px"><button class="btn btn-gris" onclick="pfMostrarConfiguracion()">Administrar categorías</button></div><div id="pf-config-lista" style="margin-top:16px"></div>')
+        '<div class="placeholder-grid"><div class="placeholder-box"><strong>Medios de cobro/pago</strong><span>Efectivo, transferencia, cheque, tarjeta y otros.</span></div><div class="placeholder-box"><strong>Categorías</strong><span>Clasificación de ingresos y egresos.</span></div><div class="placeholder-box"><strong>Perfil tributario</strong><span>Se toma del cliente activo.</span></div></div><div class="quick-actions" style="margin-top:16px"><button class="btn btn-gris" onclick="pfMostrarConfiguracion()">Administrar categorías</button></div><div id="pf-config-lista" style="margin-top:16px"></div>'),
+      shell('pf-cotizaciones','Cotizaciones','Catastro · cotizaciones y seguimiento comercial.','<div class="sin-datos">Pantalla preparada para desarrollar el registro y seguimiento de cotizaciones.</div>'),
+      shell('pf-personas','Personas','Catastro · clientes, proveedores y terceros.','<div class="sin-datos">Pantalla preparada para administrar personas y sus datos identificatorios.</div>'),
+      shell('pf-dependientes','Dependientes','Catastro · vínculos familiares y dependientes tributarios.','<div class="sin-datos">Pantalla preparada para registrar dependientes, parentesco y datos de respaldo.</div>'),
+      shell('pf-timbrados','Timbrados','Catastro · control de timbrados y vigencias.','<div class="sin-datos">Pantalla preparada para registrar números, vigencias y establecimientos.</div>'),
+      shell('pf-talonarios','Talonarios de recibo','Catastro · talonarios y numeración correlativa.','<div class="sin-datos">Pantalla preparada para controlar talonarios y numeración de recibos.</div>'),
+      shell('pf-nc-emitidas','Notas de Crédito Emitidas','Movimientos · notas de crédito emitidas.','<div class="sin-datos">Pantalla preparada para registrar notas de crédito y vincularlas con sus comprobantes de origen.</div>'),
+      shell('pf-nc-recibidas','Notas de Crédito Recibidas','Movimientos · notas de crédito recibidas.','<div class="sin-datos">Pantalla preparada para registrar y clasificar tributariamente las notas recibidas.</div>'),
+      shell('pf-recibos-cobro','Recibos de cobro','Movimientos · cobros aplicados a documentos pendientes.','<div class="sin-datos">Pantalla preparada para emitir y consultar recibos de cobro vinculados a ingresos.</div>'),
+      shell('pf-recibos-pago','Recibos de pago','Movimientos · pagos aplicados a documentos pendientes.','<div class="sin-datos">Pantalla preparada para emitir y consultar recibos de pago vinculados a egresos.</div>'),
+      shell('pf-libro-ventas','Libro IVA Ventas','Reportes · comprobantes de venta y débito fiscal.','<div class="sin-datos">El libro se conectará con las operaciones y comprobantes registrados.</div>'),
+      shell('pf-libro-compras','Libro IVA Compras','Reportes · comprobantes de compra y crédito fiscal.','<div class="sin-datos">El libro se conectará con las operaciones y comprobantes registrados.</div>'),
+      shell('pf-libro-ingresos','Libro Ingresos','Reportes · detalle de ingresos del contribuyente.','<div class="sin-datos">El libro se generará a partir de los ingresos registrados.</div>'),
+      shell('pf-libro-egresos','Libro Egresos','Reportes · detalle de egresos del contribuyente.','<div class="sin-datos">El libro se generará a partir de los egresos registrados.</div>'),
+      shell('pf-rg9021','Registro de Comprobantes (RG 90/21)','Reportes · registro de comprobantes conforme a RG 90/21.','<div class="sin-datos">El registro se preparará con los comprobantes cargados y las reglas tributarias aplicables.</div>'),
+      shell('pf-form120','Formulario 120 · IVA','Reporte tributario · Formulario 120 de IVA.','<div class="placeholder-box"><strong>Formulario 120</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\\'120\\')">Preparar Formulario 120</button></div></div>'),
+      shell('pf-form515','Formulario 515 · IRP-RSP','Reporte tributario · Formulario 515 de IRP-RSP.','<div class="placeholder-box"><strong>Formulario 515</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\\'515\\')">Preparar Formulario 515</button></div></div>'),
+      shell('pf-form516','Formulario 516 · IRP-RGC','Reporte tributario · Formulario 516 de IRP-RGC.','<div class="placeholder-box"><strong>Formulario 516</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\\'516\\')">Preparar Formulario 516</button></div></div>')
     );
   }
 
@@ -122,7 +121,7 @@
       if(directosOcultos.includes(vista)) n.style.display=activo?'none':'flex';
     });
 
-    ['pf-inicio','pf-ingresos','pf-egresos','pf-cobrar','pf-pagar','pf-impuestos','pf-formularios','pf-reportes','pf-documentos','pf-calendario','pf-configuracion'].forEach(v=>{
+    ['pf-inicio','pf-ingresos','pf-egresos','pf-cobrar','pf-pagar','pf-impuestos','pf-formularios','pf-reportes','pf-documentos','pf-calendario','pf-configuracion','pf-cotizaciones','pf-personas','pf-dependientes','pf-timbrados','pf-talonarios','pf-nc-emitidas','pf-nc-recibidas','pf-recibos-cobro','pf-recibos-pago','pf-libro-ventas','pf-libro-compras','pf-libro-ingresos','pf-libro-egresos','pf-rg9021','pf-form120','pf-form515','pf-form516'].forEach(v=>{
       const n=document.querySelector('[data-vista="'+v+'"]');
       if(n) n.style.display=activo?'flex':'none';
     });
@@ -269,6 +268,9 @@
     if(v==='pf-cobrar'){cargarPendientes('INGRESO');}
     if(v==='pf-pagar'){cargarPendientes('EGRESO');}
     if(v==='pf-reportes'){pfCargarReportes();}
+    if(v==='pf-form120'){pfAvisoFormulario('120');}
+    if(v==='pf-form515'){pfAvisoFormulario('515');}
+    if(v==='pf-form516'){pfAvisoFormulario('516');}
     if(v==='pf-configuracion'){pfMostrarConfiguracion();}
   };
 
