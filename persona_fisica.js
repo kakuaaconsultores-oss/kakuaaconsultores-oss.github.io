@@ -37,6 +37,7 @@
     group.innerHTML=
       '<div class="nav-group-title" onclick="toggleNavGroup(this)"><span><span class="nav-icon">👤</span> Persona Física</span><span class="chevron">⌄</span></div>'+
       '<div class="nav-subitems">'+
+      item('pf-inicio','Resumen')+
       subgroup('Catastro','🗂️',item('pf-cotizaciones','Cotizaciones')+item('pf-personas','Personas')+item('pf-dependientes','Dependientes')+item('pf-timbrados','Timbrados')+item('pf-talonarios','Talonarios de recibo'))+
       subgroup('Movimientos','🔄',item('pf-ingresos','Ingresos')+item('pf-egresos','Egresos')+item('pf-nc-emitidas','Notas de Crédito Emitidas')+item('pf-nc-recibidas','Notas de Crédito Recibidas')+item('pf-recibos-cobro','Recibos de cobro')+item('pf-recibos-pago','Recibos de pago'))+
       subgroup('Reportes','📊',item('pf-cobrar','Documentos a cobrar')+item('pf-pagar','Documentos a pagar')+item('pf-libro-ventas','Libro IVA Ventas')+item('pf-libro-compras','Libro IVA Compras')+item('pf-libro-ingresos','Libro Ingresos')+item('pf-libro-egresos','Libro Egresos')+item('pf-rg9021','Registro de Comprobantes (RG 90/21)')+item('pf-form120','Formulario 120 · IVA')+item('pf-form515','Formulario 515 · IRP-RSP')+item('pf-form516','Formulario 516 · IRP-RGC'))+
