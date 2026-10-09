@@ -51,7 +51,7 @@
     const main=document.querySelector('.contenido');
     if(!main || document.getElementById('vista-pf-inicio')) return;
     const shell=(id,title,sub,body)=>'<section class="vista" id="vista-'+id+'"><h2 class="titulo-seccion">'+title+'</h2><p class="subtitulo">'+sub+'</p>'+body+'</section>';
-    main.insertAdjacentHTML('beforeend',
+    main.insertAdjacentHTML('beforeend', [
       shell('pf-inicio','Persona Física · Resumen','Circuito simplificado del contribuyente: registrar, cobrar/pagar, determinar impuestos y reportar.',
         '<div class="placeholder-grid" id="pf-resumen-cards">'+
         '<div class="placeholder-box"><strong>Ingresos</strong><span id="pf-total-ingresos">—</span></div>'+
@@ -96,7 +96,7 @@
       shell('pf-form120','Formulario 120 · IVA','Reporte tributario · Formulario 120 de IVA.','<div class="placeholder-box"><strong>Formulario 120</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\'120\')">Preparar Formulario 120</button></div></div>'),
       shell('pf-form515','Formulario 515 · IRP-RSP','Reporte tributario · Formulario 515 de IRP-RSP.','<div class="placeholder-box"><strong>Formulario 515</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\'515\')">Preparar Formulario 515</button></div></div>'),
       shell('pf-form516','Formulario 516 · IRP-RGC','Reporte tributario · Formulario 516 de IRP-RGC.','<div class="placeholder-box"><strong>Formulario 516</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\'516\')">Preparar Formulario 516</button></div></div>')
-    );
+    ].filter(html=>{const tmp=document.createElement('div');tmp.innerHTML=html;return tmp.firstElementChild&&!document.getElementById(tmp.firstElementChild.id);}).join(''));
   }
 
   function ocultarModulosEmpresariales(){
