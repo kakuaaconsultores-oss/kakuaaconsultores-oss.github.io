@@ -268,9 +268,6 @@
     if(v==='pf-cobrar'){cargarPendientes('INGRESO');}
     if(v==='pf-pagar'){cargarPendientes('EGRESO');}
     if(v==='pf-reportes'){pfCargarReportes();}
-    if(v==='pf-form120'){pfAvisoFormulario('120');}
-    if(v==='pf-form515'){pfAvisoFormulario('515');}
-    if(v==='pf-form516'){pfAvisoFormulario('516');}
     if(v==='pf-configuracion'){pfMostrarConfiguracion();}
   };
 
