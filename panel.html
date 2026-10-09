@@ -219,6 +219,10 @@
         .cliente-selector-info span { display:block;color:var(--texto-suave);font-size:.7rem;margin-top:3px; }
         .cliente-selector-check { color:var(--verde);font-size:1rem;font-weight:900; }
         .cliente-selector-empty { padding:22px;text-align:center;color:var(--texto-suave);font-size:.78rem; }
+        .periodo-selector-box { margin-top:14px;padding:14px;border:1px solid var(--gris-borde);border-radius:12px;background:#f8fafc;display:grid;gap:7px; }
+        .periodo-selector-box label { color:var(--azul);font-size:.7rem;font-weight:800;letter-spacing:.05em; }
+        .periodo-selector-box select { width:100%;padding:10px 12px;border:1px solid var(--gris-borde);border-radius:8px;background:#fff;color:var(--texto);font-size:.9rem; }
+        .periodo-selector-box small { color:var(--texto-suave);font-size:.72rem; }
         .cliente-selector-footer { display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:16px; }
         .cliente-selector-footer small { color:var(--texto-suave);font-size:.7rem; }
         .cliente-selector-footer .btn { min-width:190px; }
@@ -467,6 +471,11 @@ input,select,textarea,button{max-width:100%;box-sizing:border-box}
             </div>
             <input id="cliente-selector-busqueda" class="cliente-selector-search" type="search" placeholder="🔎 Buscar por RUC o razón social..." oninput="filtrarClientesSelector()">
             <div id="cliente-selector-lista" class="cliente-selector-list"></div>
+            <div class="periodo-selector-box">
+                <label for="cliente-selector-periodo">PERIODO FISCAL</label>
+                <select id="cliente-selector-periodo" aria-label="Periodo fiscal"></select>
+                <small>El año elegido se aplicará al contexto de trabajo.</small>
+            </div>
             <div class="cliente-selector-footer">
                 <small id="cliente-selector-ayuda">Seleccioná un cliente para continuar.</small>
                 <button id="btn-ingresar-cliente" class="btn btn-azul" type="button" onclick="confirmarClienteSelector()" disabled>Ingresar al cliente</button>
@@ -1455,6 +1464,62 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
         }
 
         let clienteSelectorPendienteId = null;
+        let periodosFiscalesERP = [];
+        let periodoSelectorPendiente = String(new Date().getFullYear());
+        window.periodoActivoERP = Number(localStorage.getItem('periodo_activo_erp') || new Date().getFullYear());
+
+        function renderizarOpcionesPeriodoSelector() {
+            const select=document.getElementById('cliente-selector-periodo');
+            if(!select)return;
+            const actual=new Date().getFullYear();
+            const disponibles=new Set(periodosFiscalesERP.map(p=>Number(p.anio)));
+            const guardado=Number(localStorage.getItem('periodo_activo_erp') || actual);
+            const anios=new Set([...disponibles, actual, actual-1, actual-2, actual-3, actual-4, actual-5, actual+1]);
+            select.innerHTML=[...anios].filter(a=>a>=2000&&a<=2100).sort((a,b)=>b-a).map(anio =>
+                '<option value="'+anio+'">'+anio+(disponibles.has(anio)?'':' · se creará al ingresar')+'</option>'
+            ).join('');
+            const preferido=Number(periodoSelectorPendiente)||guardado||actual;
+            select.value=String(anios.has(preferido)?preferido:actual);
+            periodoSelectorPendiente=select.value;
+            select.onchange=()=>{periodoSelectorPendiente=select.value;};
+        }
+
+        async function cargarPeriodosFiscales(clienteId, periodoPreferido=null) {
+            periodosFiscalesERP=[];
+            if(!clienteId) {
+                periodoSelectorPendiente=String(new Date().getFullYear());
+                renderizarOpcionesPeriodoSelector();
+                return;
+            }
+            try {
+                const resp=await fetchApi(API+'/api/periodos-fiscales');
+                const data=await resp.json();
+                if(!resp.ok)throw new Error(data.error||'No se pudieron cargar los periodos fiscales.');
+                periodosFiscalesERP=Array.isArray(data.periodos)?data.periodos:[];
+                const actual=Number(data.periodo_actual)||new Date().getFullYear();
+                const guardado=Number(localStorage.getItem('periodo_activo_erp')||actual);
+                periodoSelectorPendiente=String(periodoPreferido||guardado||actual);
+                renderizarOpcionesPeriodoSelector();
+            } catch(e) {
+                console.error('Periodos fiscales:',e);
+                periodoSelectorPendiente=String(new Date().getFullYear());
+                renderizarOpcionesPeriodoSelector();
+            }
+        }
+
+        async function confirmarPeriodoFiscal(clienteId, anio) {
+            const existente=periodosFiscalesERP.some(p=>Number(p.anio)===Number(anio));
+            if(!existente) {
+                const resp=await fetchApi(API+'/api/periodos-fiscales',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({anio:Number(anio)})});
+                const data=await resp.json();
+                if(!resp.ok)throw new Error(data.error||'No se pudo crear el periodo fiscal.');
+                if(data.periodo)periodosFiscalesERP.push(data.periodo);
+            }
+            periodoSelectorPendiente=String(anio);
+            window.periodoActivoERP=Number(anio);
+            localStorage.setItem('periodo_activo_erp',String(anio));
+            document.dispatchEvent(new CustomEvent('kakuaa:periodo-cambiado',{detail:{clienteId:Number(clienteId),anio:Number(anio)}}));
+        }
 
         function actualizarSelectorCliente() {
             const boton = document.getElementById('selector-cliente');
@@ -1504,6 +1569,7 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
 
         function abrirSelectorCliente() {
             clienteSelectorPendienteId=clienteActivoERP ? String(clienteActivoERP.id) : null;
+            periodoSelectorPendiente=String(window.periodoActivoERP || new Date().getFullYear());
             const overlay=document.getElementById('cliente-selector-overlay');
             if(!overlay)return;
             const buscador=document.getElementById('cliente-selector-busqueda');
@@ -1526,8 +1592,15 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
             if(!elegido)return;
             await cambiarClienteContexto(id);
             if(clienteActivoERP && String(clienteActivoERP.id)===String(id)) {
-                cerrarSelectorCliente();
-                cambiarVista(esAdmin() ? 'dashboard' : 'tareas');
+                try {
+                    const selectPeriodo=document.getElementById('cliente-selector-periodo');
+                    const anio=Number(selectPeriodo?.value || new Date().getFullYear());
+                    await confirmarPeriodoFiscal(id,anio);
+                    cerrarSelectorCliente();
+                    cambiarVista(esAdmin() ? 'dashboard' : 'tareas');
+                } catch(e) {
+                    alert(e.message || 'No se pudo confirmar el periodo fiscal.');
+                }
             }
         }
 
@@ -1558,6 +1631,7 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
                     localStorage.removeItem('cliente_activo_id');
                 }
                 actualizarContextoClienteUI();
+                if (clienteActivoERP) await cargarPeriodosFiscales(clienteActivoERP.id, window.periodoActivoERP);
                 if (typeof window.aplicarPerfilClienteUI === 'function') window.aplicarPerfilClienteUI();
                 if (typeof window.refrescarPerfilTrasCambioCliente === 'function') window.refrescarPerfilTrasCambioCliente();
                 cargarListaClientes();
@@ -1584,6 +1658,7 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
                 clienteActivoERP = data.cliente;
                 window.clienteActivoERP = clienteActivoERP;
                 localStorage.setItem('cliente_activo_id', String(clienteId));
+                await cargarPeriodosFiscales(clienteId, window.periodoActivoERP);
                 actualizarContextoClienteUI();
                 if (typeof window.aplicarPerfilClienteUI === 'function') {
                     window.aplicarPerfilClienteUI();
