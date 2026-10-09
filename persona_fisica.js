@@ -32,7 +32,7 @@
     const group=document.createElement('div');
     group.id='nav-persona-fisica';
     group.className='nav-group';
-    const item=(id,label)=>'<div class="nav-item nav-subitem" data-vista="'+id+'" onclick="cambiarVista(\\''+id+'\\')">'+label+'</div>';
+    const item=(id,label)=>'<div class="nav-item nav-subitem" data-vista="'+id+'" onclick="cambiarVista(&quot;'+id+'&quot;)">'+label+'</div>';
     const subgroup=(label,icon,items)=>'<div class="pf-subgroup"><div class="nav-group-title" onclick="toggleNavGroup(this)"><span><span class="nav-icon">'+icon+'</span> '+label+'</span><span class="chevron">⌄</span></div><div class="nav-subitems">'+items+'</div></div>';
     group.innerHTML=
       '<div class="nav-group-title" onclick="toggleNavGroup(this)"><span><span class="nav-icon">👤</span> Persona Física</span><span class="chevron">⌄</span></div>'+
@@ -92,9 +92,9 @@
       shell('pf-libro-ingresos','Libro Ingresos','Reportes · detalle de ingresos del contribuyente.','<div class="sin-datos">El libro se generará a partir de los ingresos registrados.</div>'),
       shell('pf-libro-egresos','Libro Egresos','Reportes · detalle de egresos del contribuyente.','<div class="sin-datos">El libro se generará a partir de los egresos registrados.</div>'),
       shell('pf-rg9021','Registro de Comprobantes (RG 90/21)','Reportes · registro de comprobantes conforme a RG 90/21.','<div class="sin-datos">El registro se preparará con los comprobantes cargados y las reglas tributarias aplicables.</div>'),
-      shell('pf-form120','Formulario 120 · IVA','Reporte tributario · Formulario 120 de IVA.','<div class="placeholder-box"><strong>Formulario 120</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\\'120\\')">Preparar Formulario 120</button></div></div>'),
-      shell('pf-form515','Formulario 515 · IRP-RSP','Reporte tributario · Formulario 515 de IRP-RSP.','<div class="placeholder-box"><strong>Formulario 515</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\\'515\\')">Preparar Formulario 515</button></div></div>'),
-      shell('pf-form516','Formulario 516 · IRP-RGC','Reporte tributario · Formulario 516 de IRP-RGC.','<div class="placeholder-box"><strong>Formulario 516</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\\'516\\')">Preparar Formulario 516</button></div></div>')
+      shell('pf-form120','Formulario 120 · IVA','Reporte tributario · Formulario 120 de IVA.','<div class="placeholder-box"><strong>Formulario 120</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\'120\')">Preparar Formulario 120</button></div></div>'),
+      shell('pf-form515','Formulario 515 · IRP-RSP','Reporte tributario · Formulario 515 de IRP-RSP.','<div class="placeholder-box"><strong>Formulario 515</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\'515\')">Preparar Formulario 515</button></div></div>'),
+      shell('pf-form516','Formulario 516 · IRP-RGC','Reporte tributario · Formulario 516 de IRP-RGC.','<div class="placeholder-box"><strong>Formulario 516</strong><span>La descarga prellenada requiere conectar y validar la plantilla.</span><div class="quick-actions"><button class="btn btn-gris" onclick="pfAvisoFormulario(\'516\')">Preparar Formulario 516</button></div></div>')
     );
   }
 
