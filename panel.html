@@ -1518,12 +1518,13 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
             periodoSelectorPendiente=String(anio);
             window.periodoActivoERP=Number(anio);
             localStorage.setItem('periodo_activo_erp',String(anio));
+            actualizarContextoClienteUI();
             document.dispatchEvent(new CustomEvent('kakuaa:periodo-cambiado',{detail:{clienteId:Number(clienteId),anio:Number(anio)}}));
         }
 
         function actualizarSelectorCliente() {
             const boton = document.getElementById('selector-cliente');
-            if (boton) boton.textContent = clienteActivoERP ? clienteActivoERP.razon_social : 'Sin cliente seleccionado';
+            if (boton) boton.textContent = (clienteActivoERP ? clienteActivoERP.razon_social : 'Sin cliente seleccionado') + ' · ' + (window.periodoActivoERP || new Date().getFullYear());
             const el = document.getElementById('cliente-contexto-activo');
             if (el) el.textContent = clienteActivoERP ? clienteActivoERP.razon_social : 'Sin cliente seleccionado';
         }
@@ -1606,7 +1607,7 @@ function fetchApi(input, init={}) { const headers=new Headers(init.headers||{});
 
         function actualizarContextoClienteUI() {
             const boton = document.getElementById('selector-cliente');
-            if (boton) boton.textContent = clienteActivoERP ? clienteActivoERP.razon_social : 'Sin cliente seleccionado';
+            if (boton) boton.textContent = (clienteActivoERP ? clienteActivoERP.razon_social : 'Sin cliente seleccionado') + ' · ' + (window.periodoActivoERP || new Date().getFullYear());
             const el = document.getElementById('cliente-contexto-activo');
             if (el) el.textContent = clienteActivoERP ? clienteActivoERP.razon_social : 'Sin cliente seleccionado';
         }
